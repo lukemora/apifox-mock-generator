@@ -1,0 +1,44 @@
+# Source files
+src/
+
+# Tests
+test/
+tests/
+*.test.ts
+*.spec.ts
+
+# Config files (not needed in npm package)
+tsconfig.json
+.prettierrc.json
+apifox.config.json
+
+# Generated files (users will generate their own)
+generated/
+mock/
+
+# Git
+.git/
+.gitignore
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dev dependencies
+node_modules/
+
+# CI
+.github/
+.gitlab-ci.yml
+
+# Documentation (included via files field in package.json)
+# README.md
+# CHANGELOG.md
+# LICENSE
