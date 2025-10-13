@@ -72,19 +72,10 @@ function buildRequestBody(config: ApifoxConfig): any {
       }
     }
 
-    if (config.apiFilter.options) {
-      const options: any = {}
-
-      if (config.apiFilter.options.includeApifoxExtensionProperties !== undefined) {
-        options.includeApifoxExtensionProperties = config.apiFilter.options.includeApifoxExtensionProperties
-      }
-      if (config.apiFilter.options.addFoldersToTags !== undefined) {
-        options.addFoldersToTags = config.apiFilter.options.addFoldersToTags
-      }
-
-      if (Object.keys(options).length > 0) {
-        requestBody.options = options
-      }
+    // 始终启用 Apifox 扩展属性和文件夹标签（写死为 true）
+    requestBody.options = {
+      includeApifoxExtensionProperties: true,
+      addFoldersToTags: true
     }
   }
 

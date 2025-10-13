@@ -173,7 +173,25 @@ function generateMockTemplateForResponse(schema: any, definitions?: any, indent:
         const propSchema = prop as any
         const mockValue = generateMockValueForField(key, propSchema, definitions)
         const comma = index < props.length - 1 ? ',' : ''
-        objContent += `\n${indent}'${key}': ${mockValue}${comma}`
+        // 添加字段说明作为行内注释
+        let comment = ''
+        const fieldDesc = propSchema.title || propSchema.description || ''
+
+        // 处理枚举类型，展示枚举选项
+        if (propSchema['x-apifox-enum'] && Array.isArray(propSchema['x-apifox-enum'])) {
+          const enumItems = propSchema['x-apifox-enum']
+            .map((item: any) => `${item.value}:${item.name}`)
+            .join(', ')
+          if (enumItems) {
+            // 如果有字段说明，格式为：// 字段说明 枚举选项
+            comment = fieldDesc ? ` // ${fieldDesc} ${enumItems}` : ` // ${enumItems}`
+          } else if (fieldDesc) {
+            comment = ` // ${fieldDesc}`
+          }
+        } else if (fieldDesc) {
+          comment = ` // ${fieldDesc}`
+        }
+        objContent += `\n${indent}${key}: ${mockValue}${comma}${comment}`
       })
       objContent += `\n${indent.slice(0, -1)}}` // 减少一级缩进
       return objContent
@@ -188,7 +206,7 @@ function generateMockTemplateForResponse(schema: any, definitions?: any, indent:
 }
 
 /**
- * 为单个字段生成 Mock 值
+ * 为单个字段生成 Mock 值（直接使用 Apifox mock 规则）
  */
 function generateMockValueForField(fieldName: string, schema: any, definitions?: any): string {
   if (!schema) return 'null'
@@ -201,17 +219,52 @@ function generateMockValueForField(fieldName: string, schema: any, definitions?:
     }
   }
 
+  // 使用 Apifox 的 mock 规则
+  const apifoxMockValue = extractApifoxMockRule(schema)
+  if (apifoxMockValue) {
+    return wrapMockTemplate(apifoxMockValue)
+  }
+
+  // 如果没有 Apifox 规则，使用基本的默认值
   switch (schema.type) {
     case 'string':
-      return inferStringMockValue(schema, fieldName)
+      // 优先使用示例值
+      if (schema.example !== undefined) {
+        return `"${schema.example}"`
+      }
+      // 使用枚举值
+      if (schema.enum && schema.enum.length > 0) {
+        const enumValues = schema.enum.map((v: any) => `"${v}"`).join(', ')
+        return wrapMockTemplate(`@pick([${enumValues}])`)
+      }
+      return wrapMockTemplate('@cword(3, 8)')
 
     case 'number':
     case 'integer':
-      return inferNumberMockValue(schema, fieldName)
+      // 优先使用示例值
+      if (schema.example !== undefined) {
+        return schema.example.toString()
+      }
+      // 使用枚举值
+      if (schema.enum && schema.enum.length > 0) {
+        const enumValues = schema.enum.join(', ')
+        return wrapMockTemplate(`@pick([${enumValues}])`)
+      }
+      // 使用范围
+      const min = schema.minimum ?? 0
+      const max = schema.maximum ?? 100
+      if (schema.type === 'integer') {
+        return wrapMockTemplate(`@integer(${min}, ${max})`)
+      } else {
+        return wrapMockTemplate(`@float(${min}, ${max}, 2, 2)`)
+      }
 
     case 'boolean':
-      // 使用 Math.random() < 0.5 生成随机布尔值
-      return 'Boolean(Math.random() < 0.5)'
+      // 优先使用示例值
+      if (schema.example !== undefined) {
+        return schema.example.toString()
+      }
+      return wrapMockTemplate('@boolean')
 
     case 'array':
       return `[${generateMockValueForField('', schema.items, definitions)}]`
@@ -225,73 +278,113 @@ function generateMockValueForField(fieldName: string, schema: any, definitions?:
 }
 
 /**
- * 推断字符串类型的 Mock 值
+ * 提取 Apifox 的 mock 规则
+ * Apifox 的 mock 规则存储在 x-apifox-mock 字段中
  */
-function inferStringMockValue(schema: any, fieldName?: string): string {
-  // 1. 枚举值
-  if (schema.enum) return `"${schema.enum[0]}"`
+function extractApifoxMockRule(schema: any): string | null {
+  if (!schema) return null
 
-  // 2. 格式
-  if (schema.format === 'date-time') return '"@datetime"'
-  if (schema.format === 'date') return '"@date"'
-  if (schema.format === 'email') return '"@email"'
-  if (schema.format === 'url') return '"@url"'
+  // 检查是否有 Apifox 的 mock 规则（存储在 x-apifox-mock 字段）
+  const apifoxMock = schema['x-apifox-mock']
 
-  // 3. 根据字段名推断
-  const name = (fieldName || '').toLowerCase()
-  if (name.includes('code')) return 'String(Math.random() < 1)' // 状态码通常是字符串 "0" 或 "1"
-  if (name.includes('msg') || name.includes('message')) {
-    // 计算合适的字数范围
-    const minWords = 0
-    const maxWords = 11
-    return `'@cword(${minWords}, ${maxWords})'`
+  if (!apifoxMock) {
+    return null
   }
-  if (name.includes('token')) return '"@guid"'
-  if (name.includes('id') || name.includes('_id')) return '"@guid"'
-  if (name.includes('email')) return '"@email"'
-  if (name.includes('phone') || name.includes('mobile') || name.includes('tel')) return '"/^1[3-9]\\\\d{9}$/"'
-  if (name.includes('name') && !name.includes('file')) return '"@cname"'
-  if (name.includes('username')) return '"@name"'
-  if (name.includes('address')) return '"@county(true)"'
-  if (name.includes('city')) return '"@city"'
-  if (name.includes('province')) return '"@province"'
-  if (name.includes('url') || name.includes('link') || name.includes('href')) return '"@url"'
-  if (name.includes('avatar') || name.includes('image') || name.includes('img') || name.includes('pic')) return '"@image(\\"200x200\\")"'
-  if (name.includes('title')) return '"@ctitle(5, 15)"'
-  if (name.includes('content') || name.includes('desc') || name.includes('description')) return '"@cparagraph(1, 3)"'
 
-  // 4. 示例值
-  if (schema.example) return `"${schema.example}"`
+  let mockRule: string | null = null
 
-  // 5. 默认规则
-  return '"@string(5, 10)"'
+  // x-apifox-mock 可能是字符串或对象
+  if (typeof apifoxMock === 'string') {
+    mockRule = apifoxMock
+  } else if (typeof apifoxMock === 'object' && apifoxMock.mock) {
+    mockRule = apifoxMock.mock
+  }
+
+  if (!mockRule) {
+    return null
+  }
+
+  // 转换 Apifox 模板语法为 Mock.js 语法
+  const convertedRule = convertApifoxTemplateToMockJs(mockRule)
+
+  return convertedRule
 }
 
 /**
- * 推断数字类型的 Mock 值
+ * 转换 Apifox 模板语法为 Mock.js 语法
+ * Apifox 使用 {{...}} 语法，需要转换为 Mock.js 的 @xxx 语法
  */
-function inferNumberMockValue(schema: any, fieldName?: string): string {
-  // 1. 如果有范围，使用范围
-  if (schema.minimum !== undefined && schema.maximum !== undefined) {
-    return `Number(Math.random() * ${schema.maximum - schema.minimum} + ${schema.minimum})`
+function convertApifoxTemplateToMockJs(template: string): string {
+  // 如果已经是 Mock.js 语法（以 @ 开头），直接返回
+  if (template.startsWith('@') || template.startsWith('/')) {
+    return template
   }
 
-  // 2. 根据字段名推断
-  const name = (fieldName || '').toLowerCase()
-  if (name.includes('code') || name.includes('status')) {
-    // code 字段通常 0 表示成功
-    return 'Number(Math.random() < 0)' // 永远返回 0
+  // 如果是 Apifox 的模板语法 {{...}}，尝试转换
+  if (template.includes('{{') && template.includes('}}')) {
+    // Apifox 常见模板映射到 Mock.js
+    const mappings: Record<string, string> = {
+      '{{$string.uuid}}': '@guid',
+      '{{$person.fullName}}': '@cname',
+      "{{$person.fullName(locale='zh_CN')}}": '@cname',
+      "{{$person.fullName(locale='en_US')}}": '@name',
+      '{{$person.firstName}}': '@cfirst',
+      '{{$person.lastName}}': '@clast',
+      '{{$internet.email}}': '@email',
+      '{{$internet.url}}': '@url',
+      '{{$internet.ip}}': '@ip',
+      '{{$phone.number}}': '/^1[3-9]\\d{9}$/',
+      '{{$address.city}}': '@city',
+      '{{$address.province}}': '@province',
+      '{{$address.county}}': '@county',
+      '{{$date.now}}': '@now',
+      '{{$date.recent}}': '@datetime',
+      '{{$image.image}}': '@image',
+      '{{$string.sample}}': '@cword(3, 8)',
+      '{{$number.int}}': '@integer(0, 100)',
+      '{{$number.float}}': '@float(0, 100, 2, 2)',
+      '{{$boolean}}': '@boolean'
+    }
+
+    // 尝试精确匹配
+    if (mappings[template]) {
+      return mappings[template]
+    }
+
+    // 尝试模糊匹配常见模式
+    for (const [pattern, replacement] of Object.entries(mappings)) {
+      if (template.includes(pattern.replace('{{', '').replace('}}', ''))) {
+        return replacement
+      }
+    }
+
+    // 如果无法转换，返回空字符串（使用回退策略）
+    return ''
   }
-  if (name.includes('age')) return 'Number(Math.random() * 42 + 18)'
-  if (name.includes('price') || name.includes('amount') || name.includes('money')) return 'Number((Math.random() * 10000).toFixed(2))'
-  if (name.includes('count') || name.includes('num') || name.includes('total')) return 'Math.floor(Math.random() * 1000)'
-  if (name.includes('page')) return 'Math.floor(Math.random() * 100) + 1'
-  if (name.includes('size') || name.includes('limit')) return 'Math.floor(Math.random() * 90) + 10'
 
-  // 3. 示例值
-  if (schema.example !== undefined) return schema.example.toString()
-
-  // 4. 默认规则
-  return 'Math.floor(Math.random() * 100)'
+  return template
 }
+
+/**
+ * 包装 Mock.js 模板，确保正确的引号格式
+ * Mock.js 占位符（@xxx）需要用单引号包裹
+ */
+function wrapMockTemplate(template: string): string {
+  // 如果已经是用引号包裹的字符串，直接返回（使用单引号）
+  if (template.startsWith('"') && template.endsWith('"')) {
+    return "'" + template.slice(1, -1) + "'"
+  }
+  if (template.startsWith("'") && template.endsWith("'")) {
+    return template
+  }
+
+  // 如果是 Mock.js 占位符（以@开头）或正则表达式（以/开头），用单引号包裹
+  if (template.startsWith('@') || template.startsWith('/')) {
+    return `'${template}'`
+  }
+
+  // 其他情况（数字、布尔值、函数调用等）直接返回
+  return template
+}
+
 

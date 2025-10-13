@@ -37,11 +37,11 @@ export interface ApiFilter {
     apiIdList?: string[]
   }
 
-  /** 导出选项配置（服务端选项） */
+  /** 导出选项配置（服务端选项） - 已废弃，相关选项已默认启用 */
   options?: {
-    /** 是否包含 Apifox 扩展属性 */
+    /** @deprecated 此选项已废弃，系统默认启用 */
     includeApifoxExtensionProperties?: boolean
-    /** 是否将文件夹路径添加到标签中 */
+    /** @deprecated 此选项已废弃，系统默认启用 */
     addFoldersToTags?: boolean
   }
 
