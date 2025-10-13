@@ -5,6 +5,84 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0] - 2025-10-13
+
+### 🎯 核心功能
+
+#### 🎭 直接使用 Apifox Mock 规则
+
+- **使用 Apifox 配置** - 直接使用 Apifox 中为字段配置的 mock 规则
+- **统一管理** - Mock 规则在 Apifox 平台统一管理，本地与云端保持完全一致
+- **零配置** - 在 Apifox 中配置好 mock 规则，生成时自动应用
+
+### ✨ 新增功能
+
+#### 🔄 Apifox Mock 规则支持
+
+- **x-apifox-mock 字段** - 自动提取 Apifox 的 `x-apifox-mock` 扩展字段中的 mock 规则
+- **智能语法转换** - 自动将 Apifox 模板语法（`{{$xxx}}`）转换为 Mock.js 语法（`@xxx`）
+- **双语法支持** - 同时支持 Mock.js 语法和 Apifox 模板语法
+- **自动应用** - 启用 `includeApifoxExtensionProperties` 后自动拉取和应用规则
+
+支持的 Apifox 模板转换：
+- `{{$string.uuid}}` → `@guid`
+- `{{$person.fullName(locale='zh_CN')}}` → `@cname`
+- `{{$internet.email}}` → `@email`
+- `{{$phone.number}}` → `/^1[3-9]\\d{9}$/`
+- 更多模板映射...
+
+#### 📊 回退策略
+
+当字段没有配置 Apifox mock 规则时，使用以下回退策略：
+
+1. **示例值优先** - 使用 schema 中定义的 `example`
+2. **枚举值** - 使用 `enum` 中的值（通过 `@pick` 随机选择）
+3. **基本规则** - 根据字段类型使用简单的默认规则
+   - 字符串：`@cword(3, 8)`
+   - 数字/整数：根据 `minimum/maximum` 生成范围
+   - 布尔值：`@boolean`
+
+### 📖 文档更新
+
+- **README.md** - 新增"Apifox Mock 规则"章节
+  - 说明工作原理和使用方法
+  - 提供使用示例
+  - 更新项目结构说明
+- **CHANGELOG.md** - 详细记录所有变更
+
+### 🎯 优势
+
+- ✅ **统一管理** - 在 Apifox 中统一管理所有 mock 规则，团队协作更方便
+- ✅ **完全一致** - 本地 Mock 数据与 Apifox 云端 Mock 保持一致
+- ✅ **零学习成本** - 使用 Apifox 原生的 mock 规则，无需学习新语法
+- ✅ **功能完整** - 支持 Apifox 的所有 mock 规则和高级功能
+
+### 🚀 使用示例
+
+在 Apifox 中配置字段的 mock 规则：
+
+```
+字段名: email
+类型: string
+Mock 规则: @email
+```
+
+生成的 Mock 文件会自动应用该规则：
+
+```javascript
+Mock.mock({
+  email: '@email'  // 直接使用 Apifox 配置的规则
+})
+```
+
+### ⚡ 兼容性
+
+- 向下兼容 v1.0.0
+- 无需修改配置文件
+- 自动应用 Apifox mock 规则
+
+---
+
 ## [1.0.0] - 2025-10-10
 
 ### ✨ 初始版本发布

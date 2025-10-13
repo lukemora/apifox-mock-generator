@@ -1,8 +1,8 @@
 {
   "projectId": "7173060",
   "token": "APS-XQrLSqLE4q0FOb0bGhaqYvTxSUQQFPeO",
-  "mockDir": "./generated/mock",
-  "typesDir": "./generated/types",
+  "mockDir": "./mock",
+  "typesDir": "./types",
   "mockPort": 3000,
   "apiFilter": {
     "scope": {
@@ -11,10 +11,6 @@
         "已废弃",
         "测试接口"
       ]
-    },
-    "options": {
-      "includeApifoxExtensionProperties": false,
-      "addFoldersToTags": true
     },
     "includePaths": [
       "/api/**"

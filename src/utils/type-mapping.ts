@@ -40,16 +40,22 @@ export function getTypeScriptType(schema: any): string {
 
   switch (schema.type) {
     case 'string':
-      if (schema.enum) {
+      if (schema.enum && schema.enum.length > 0) {
         return schema.enum.map((e: string) => `'${e}'`).join(' | ')
       }
       return 'string'
 
     case 'number':
     case 'integer':
+      if (schema.enum && schema.enum.length > 0) {
+        return schema.enum.map((e: number) => e.toString()).join(' | ')
+      }
       return 'number'
 
     case 'boolean':
+      if (schema.enum && schema.enum.length > 0) {
+        return schema.enum.join(' | ')
+      }
       return 'boolean'
 
     case 'array':
