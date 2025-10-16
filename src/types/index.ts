@@ -19,8 +19,8 @@ export interface ApiFilter {
   // ========== Apifox 服务端过滤配置（通过 export-openapi API） ==========
   /** 导出范围配置（服务端过滤） */
   scope?: {
-    /** 
-     * 导出类型 
+    /**
+     * 导出类型
      * - ALL: 导出所有接口
      * - FOLDER: 按文件夹导出
      * - TAG: 按标签导出
@@ -29,7 +29,7 @@ export interface ApiFilter {
     type?: 'ALL' | 'FOLDER' | 'TAG' | 'API_LIST'
     /** 包含的标签（仅当 type 为 TAG 时有效） */
     includedByTags?: string[]
-    /** 排除的标签 */
+    /** 排除的接口状态（通过标签字段实现） */
     excludedByTags?: string[]
     /** 文件夹路径（仅当 type 为 FOLDER 时有效，如 "用户模块/用户管理"） */
     folderPath?: string
@@ -78,6 +78,8 @@ export interface ApiEndpoint {
   tags?: string[]
   /** 是否废弃 */
   deprecated?: boolean
+  /** 接口状态 */
+  status?: string
   /** 参数列表 */
   parameters?: ApiParameter[]
   /** 请求体 */
@@ -187,4 +189,3 @@ export interface MockRoute {
   response: any
   status?: number
 }
-

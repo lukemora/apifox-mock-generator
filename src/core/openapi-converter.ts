@@ -20,16 +20,18 @@ export function convertOpenAPIToEndpoints(openapi: any): ApiEndpoint[] {
           operationId: op.operationId,
           tags: op.tags || [],
           deprecated: op.deprecated || false,
+          status: op['x-apifox-status'] || '',
           folderPath: op['x-apifox-folder'] || '',
           parameters: op.parameters?.map((p: any) => ({
             name: p.name,
             in: p.in,
             required: p.required || false,
             type: p.schema?.type || 'string',
-            description: p.description
+            description: p.description,
           })),
           requestBody: op.requestBody?.content?.['application/json']?.schema,
-          responseBody: op.responses?.['200']?.content?.['application/json']?.schema
+          responseBody:
+            op.responses?.['200']?.content?.['application/json']?.schema,
         } as any)
       }
     }
@@ -37,4 +39,3 @@ export function convertOpenAPIToEndpoints(openapi: any): ApiEndpoint[] {
 
   return endpoints
 }
-

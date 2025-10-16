@@ -1,27 +1,19 @@
 {
-  "projectId": "7173060",
-  "token": "APS-XQrLSqLE4q0FOb0bGhaqYvTxSUQQFPeO",
-  "mockDir": "./mock",
-  "typesDir": "./types",
-  "mockPort": 3000,
-  "apiFilter": {
-    "scope": {
-      "type": "ALL",
-      "excludedByTags": [
-        "已废弃",
-        "测试接口"
-      ]
-    },
-    "includePaths": [
-      "/api/**"
-    ],
-    "excludePaths": [],
-    "excludeDeprecated": true,
-    "includeMethods": [
-      "GET",
-      "POST",
-      "PUT",
-      "DELETE"
-    ]
-  }
+    "projectId": "7219799",
+    "token": "APS-XQrLSqLE4q0FOb0bGhaqYvTxSUQQFPeO",
+    "mockDir": "./mock",
+    "typesDir": "./src/types/mock",
+    "mockPort": 3000,
+    "apiFilter": {
+        "scope": {
+            "type": "ALL",
+            "excludedByTags": [
+                "设计中"
+            ]
+        },
+        "includePaths": [],
+        "excludePaths": [],
+        "excludeDeprecated": true,
+        "includeMethods": []
+    }
 }

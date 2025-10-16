@@ -1,12 +1,14 @@
 import axios from 'axios'
-import https from 'https'
+import * as https from 'https'
 import { logger } from '../utils/logger.js'
 import type { ApifoxConfig } from '../types/index.js'
 
 /**
  * 从 Apifox 拉取 OpenAPI 数据
  */
-export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<any> {
+export async function fetchOpenAPIFromApifox(
+  config: ApifoxConfig,
+): Promise<any> {
   logger.info('从 Apifox 拉取 API 数据...')
 
   try {
@@ -17,20 +19,21 @@ export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<any>
 
     const response = await axios.post(apiUrl, requestBody, {
       headers: {
-        'Authorization': `Bearer ${config.token}`,
+        Authorization: `Bearer ${config.token}`,
         'Content-Type': 'application/json',
-        'X-Apifox-Api-Version': '2024-03-28'
+        'X-Apifox-Api-Version': '2024-03-28',
       },
       httpsAgent: new https.Agent({
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
       }),
-      timeout: 30000
+      timeout: 30000,
     })
 
-    logger.success(`✓ 从 Apifox 拉取成功（${Object.keys(response.data.paths || {}).length} 个接口）`)
+    logger.success(
+      `✓ 从 Apifox 拉取成功（${Object.keys(response.data.paths || {}).length} 个接口）`,
+    )
 
     return response.data
-
   } catch (error) {
     handleApifoxError(error)
     throw error
@@ -43,7 +46,7 @@ export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<any>
 function buildRequestBody(config: ApifoxConfig): any {
   const requestBody: any = {
     oasVersion: '3.0',
-    exportFormat: 'JSON'
+    exportFormat: 'JSON',
   }
 
   // 应用服务端过滤配置
@@ -54,16 +57,20 @@ function buildRequestBody(config: ApifoxConfig): any {
       if (config.apiFilter.scope.type) {
         scope.type = config.apiFilter.scope.type
       }
-      if (config.apiFilter.scope.includedByTags && config.apiFilter.scope.includedByTags.length > 0) {
+      if (
+        config.apiFilter.scope.includedByTags &&
+        config.apiFilter.scope.includedByTags.length > 0
+      ) {
         scope.includedByTags = config.apiFilter.scope.includedByTags
       }
-      if (config.apiFilter.scope.excludedByTags && config.apiFilter.scope.excludedByTags.length > 0) {
-        scope.excludedByTags = config.apiFilter.scope.excludedByTags
-      }
+      // excludedByTags 现在是客户端过滤，不再发送到服务端
       if (config.apiFilter.scope.folderPath) {
         scope.folderPath = config.apiFilter.scope.folderPath
       }
-      if (config.apiFilter.scope.apiIdList && config.apiFilter.scope.apiIdList.length > 0) {
+      if (
+        config.apiFilter.scope.apiIdList &&
+        config.apiFilter.scope.apiIdList.length > 0
+      ) {
         scope.apiIdList = config.apiFilter.scope.apiIdList
       }
 
@@ -75,7 +82,7 @@ function buildRequestBody(config: ApifoxConfig): any {
     // 始终启用 Apifox 扩展属性和文件夹标签（写死为 true）
     requestBody.options = {
       includeApifoxExtensionProperties: true,
-      addFoldersToTags: true
+      addFoldersToTags: true,
     }
   }
 
@@ -119,4 +126,3 @@ function handleApifoxError(error: unknown): void {
     logger.info(error.message)
   }
 }
-

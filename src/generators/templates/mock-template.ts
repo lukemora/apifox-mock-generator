@@ -2,9 +2,9 @@ import type { ApiEndpoint } from '../../types/index.js'
 import { mapTypeToLodashCheck } from '../../utils/type-mapping.js'
 
 /**
- * 生成 Mock 文件内容（新格式，ES Module 版本，支持增量更新）
+ * 生成单个接口的 Mock 内容（不包含 import 语句）
  */
-export function generateMockFileContent(endpoint: ApiEndpoint, definitions?: any): string {
+export function generateMockEndpointContent(endpoint: ApiEndpoint, definitions?: any): string {
   const method = endpoint.method.toUpperCase()
 
   // 生成方法前缀和命名空间（用于注释标记）
@@ -20,7 +20,8 @@ export function generateMockFileContent(endpoint: ApiEndpoint, definitions?: any
   const mockParams = generateMockParams(endpoint)
 
   // 生成 Mock.js 模板（用于响应数据）
-  const mockTemplate = generateMockTemplateForResponse(endpoint.responseBody, definitions)
+  const interfaceInfo = `${endpoint.path}[${method}]`
+  const mockTemplate = generateMockTemplateForResponse(endpoint.responseBody, definitions, '\t\t\t\t\t', interfaceInfo)
 
   // 生成注释标记
   const commentTag = `${endpoint.path}[${method}]`
@@ -31,11 +32,8 @@ export function generateMockFileContent(endpoint: ApiEndpoint, definitions?: any
  * @apiURI ${endpoint.path}
  * @apiRequestType ${method}
  */
-import Mock from "mockjs";
-import lodash from "lodash";
-
 export const check_${namespaceName} = function () {
-\t//ture 本地数据， false 远程服务器数据
+\t//true 本地数据， false 远程服务器数据
 \treturn false;
 };
 
@@ -70,7 +68,7 @@ export function ${namespaceName}(query, body, ctx) {
         return new Promise(res => {
             setTimeout(() => {
                 res(Mock.mock(${mockTemplate}))
-            }, Math.random() * 3000)
+            }, Math.random() * 300)
             
         })
         ;
@@ -78,8 +76,8 @@ export function ${namespaceName}(query, body, ctx) {
         
 
     return {
-        code: 1,
-    msg: '请检查请求的method或者URI的query是否正确'
+        "code": 1,
+    "msg": '请检查请求的method或者URI的query是否正确'
   };
 }
 //[end]${commentTag}
@@ -149,14 +147,14 @@ function extractParamsFromSchema(schema: any, required: string[] = []): any[] {
 /**
  * 生成 Mock.js 响应模板（格式化为对象字面量）
  */
-function generateMockTemplateForResponse(schema: any, definitions?: any, indent: string = '\t\t\t\t\t'): string {
+function generateMockTemplateForResponse(schema: any, definitions?: any, indent: string = '\t\t\t\t\t', interfaceInfo?: string): string {
   if (!schema) return '{}'
 
   // 处理引用
   if (schema.$ref) {
     const refName = schema.$ref.split('/').pop()
     if (definitions?.[refName]) {
-      return generateMockTemplateForResponse(definitions[refName], definitions, indent)
+      return generateMockTemplateForResponse(definitions[refName], definitions, indent, interfaceInfo)
     }
   }
 
@@ -169,9 +167,26 @@ function generateMockTemplateForResponse(schema: any, definitions?: any, indent:
 
       let objContent = '{'
       const props = Object.entries(schema.properties)
+      
+      // 检查是否同时存在 code 和 msg 字段
+      const hasCode = props.some(([key]) => key === 'code')
+      const hasMsg = props.some(([key]) => key === 'msg')
+      const needsSharedRandom = hasCode && hasMsg
+      
       props.forEach(([key, prop], index) => {
         const propSchema = prop as any
-        const mockValue = generateMockValueForField(key, propSchema, definitions)
+        let mockValue = generateMockValueForField(key, propSchema, definitions, interfaceInfo)
+        
+        // 如果同时存在 code 和 msg 字段，使用共享的随机数
+        if (needsSharedRandom) {
+          if (key === 'code' && (propSchema.type === 'integer' || propSchema.type === 'number')) {
+            mockValue = 'randomCode'
+          } else if (key === 'msg' && propSchema.type === 'string') {
+            const apiInfo = interfaceInfo
+            mockValue = `randomCode === 1 ? "接口调用失败:${apiInfo}" : "接口调用成功"`
+          }
+        }
+        
         const comma = index < props.length - 1 ? ',' : ''
         // 添加字段说明作为行内注释
         let comment = ''
@@ -191,32 +206,56 @@ function generateMockTemplateForResponse(schema: any, definitions?: any, indent:
         } else if (fieldDesc) {
           comment = ` // ${fieldDesc}`
         }
-        objContent += `\n${indent}${key}: ${mockValue}${comma}${comment}`
+
+        // 强制所有键名都使用双引号包裹，保持一致性
+        const fieldKey = propSchema.type === 'array' ? `"${key}|0-11"` : `"${key}"`
+        objContent += `\n${indent}${fieldKey}: ${mockValue}${comma}${comment}`
       })
       objContent += `\n${indent.slice(0, -1)}}` // 减少一级缩进
+      
+      // 如果同时存在 code 和 msg 字段，需要包装一个函数来生成共享的随机数
+      if (needsSharedRandom) {
+        const apiInfo = interfaceInfo || '接口'
+        return `(() => {
+        const randomCode = Math.random() < 0.5 ? 1 : 0;
+        return ${objContent};
+    })()`
+      }
+      
       return objContent
 
     case 'array':
-      const itemTemplate = generateMockTemplateForResponse(schema.items, definitions, indent + '\t')
+      const itemTemplate = generateMockTemplateForResponse(schema.items, definitions, indent + '\t', interfaceInfo)
       return `[${itemTemplate}]`
 
     default:
-      return generateMockValueForField('', schema, definitions)
+      return generateMockValueForField('', schema, definitions, interfaceInfo)
   }
 }
 
 /**
  * 为单个字段生成 Mock 值（直接使用 Apifox mock 规则）
  */
-function generateMockValueForField(fieldName: string, schema: any, definitions?: any): string {
+function generateMockValueForField(fieldName: string, schema: any, definitions?: any, interfaceInfo?: string): string {
   if (!schema) return 'null'
 
   // 处理引用
   if (schema.$ref) {
     const refName = schema.$ref.split('/').pop()
     if (definitions?.[refName]) {
-      return generateMockValueForField(fieldName, definitions[refName], definitions)
+      return generateMockValueForField(fieldName, definitions[refName], definitions, interfaceInfo)
     }
+  }
+
+  // 特殊处理 code 字段，生成随机 0 或 1
+  if (fieldName === 'code' && (schema.type === 'integer' || schema.type === 'number')) {
+    return 'Math.random() < 0.5 ? 1 : 0'
+  }
+
+  // 特殊处理 msg 字段，根据 code 值生成相应消息
+  if (fieldName === 'msg' && schema.type === 'string') {
+    const apiInfo = interfaceInfo || '接口'
+    return `Math.random() < 0.5 ? "接口调用失败:${apiInfo}" : "接口调用成功"`
   }
 
   // 使用 Apifox 的 mock 规则
@@ -267,7 +306,8 @@ function generateMockValueForField(fieldName: string, schema: any, definitions?:
       return wrapMockTemplate('@boolean')
 
     case 'array':
-      return `[${generateMockValueForField('', schema.items, definitions)}]`
+      const itemTemplate = generateMockTemplateForResponse(schema.items, definitions)
+      return `[${itemTemplate}]`
 
     case 'object':
       return generateMockTemplateForResponse(schema, definitions)
@@ -276,6 +316,7 @@ function generateMockValueForField(fieldName: string, schema: any, definitions?:
       return 'null'
   }
 }
+
 
 /**
  * 提取 Apifox 的 mock 规则
@@ -319,6 +360,7 @@ function convertApifoxTemplateToMockJs(template: string): string {
   if (template.startsWith('@') || template.startsWith('/')) {
     return template
   }
+
 
   // 如果是 Apifox 的模板语法 {{...}}，尝试转换
   if (template.includes('{{') && template.includes('}}')) {
