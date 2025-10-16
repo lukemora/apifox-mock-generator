@@ -1,6 +1,6 @@
 {
     "name": "apifox-mock-generator",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "description": "从Apifox拉取API接口并生成本地mock和TypeScript类型文件",
     "main": "dist/src/index.js",
     "type": "module",
