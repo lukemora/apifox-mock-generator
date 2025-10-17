@@ -46,8 +46,8 @@ export namespace ${context.namespaceName} {`;
     }
   }
 
-  // 生成请求体类型
-  if (endpoint.requestBody) {
+  // 生成请求体类型和参数类型
+  if (endpoint.requestBody || endpoint.parameters?.length) {
     const requestTypes = generateRequestTypes(endpoint, schemas, context, schemaNameMap);
     if (requestTypes) {
       content += `\n\n${requestTypes}`;
@@ -108,7 +108,25 @@ function generateResponseTypes(
 
   // 生成响应体主类型
   content += `\n  /** 响应体 */`;
-  content += `\n  export interface Res ${generateInterfaceBody(responseBody, schemas, context, 'Res', schemaNameMap)}`;
+  const responseType = generateInterfaceBody(responseBody, schemas, context, 'Res', schemaNameMap);
+  if (responseType.startsWith('export interface')) {
+    // 如果返回的是完整的接口定义，直接使用
+    content += `\n  ${responseType}`;
+  } else if (responseType.startsWith('{')) {
+    // 如果返回的是对象字面量，直接使用
+    content += `\n  export interface Res ${responseType}`;
+  } else {
+    // 如果返回的是类型名称，生成完整的接口定义而不是继承
+    const referencedInterface = context.complexTypes.get(responseType);
+    if (referencedInterface) {
+      // 提取接口体内容，去掉 export interface 部分
+      const interfaceBody = referencedInterface.replace(/export interface \w+ /, '');
+      content += `\n  export interface Res ${interfaceBody}`;
+    } else {
+      // 如果没有找到引用的接口，使用继承作为后备
+      content += `\n  export interface Res extends ${responseType} {}`;
+    }
+  }
 
   return content;
 }
@@ -127,7 +145,31 @@ function generateRequestTypes(
   // 生成请求体类型
   if (endpoint.requestBody) {
     content += `  /** 请求体 */`;
-    content += `\n  export interface Req ${generateInterfaceBody(endpoint.requestBody, schemas, context, 'Req', schemaNameMap)}`;
+    const requestType = generateInterfaceBody(
+      endpoint.requestBody,
+      schemas,
+      context,
+      'Req',
+      schemaNameMap
+    );
+    if (requestType.startsWith('export interface')) {
+      // 如果返回的是完整的接口定义，直接使用
+      content += `\n  ${requestType}`;
+    } else if (requestType.startsWith('{')) {
+      // 如果返回的是对象字面量，直接使用
+      content += `\n  export interface Req ${requestType}`;
+    } else {
+      // 如果返回的是类型名称，生成完整的接口定义而不是继承
+      const referencedInterface = context.complexTypes.get(requestType);
+      if (referencedInterface) {
+        // 提取接口体内容，去掉 export interface 部分
+        const interfaceBody = referencedInterface.replace(/export interface \w+ /, '');
+        content += `\n  export interface Req ${interfaceBody}`;
+      } else {
+        // 如果没有找到引用的接口，使用继承作为后备
+        content += `\n  export interface Req extends ${requestType} {}`;
+      }
+    }
   }
 
   // 生成路径参数类型

@@ -3,7 +3,11 @@ import { fileHelper } from '../utils/file-helper.js';
 import { logger } from '../utils/logger.js';
 import { groupEndpointsByPath } from '../utils/path-utils.js';
 import { generateMockEndpointContent } from './templates/mock-template.js';
-import { generateFileArchitecture, hasFileArchitecture } from './templates/file-architecture.js';
+import {
+  generateFileArchitecture,
+  hasFileArchitecture,
+  deduplicateImports
+} from './templates/file-architecture.js';
 import type { ApifoxConfig, ApiEndpoint } from '../types/index.js';
 
 /**
@@ -64,13 +68,39 @@ async function ensureFileArchitecture(filePath: string): Promise<void> {
     return;
   }
 
-  // 文件存在，检查是否有基础架构
-  const content = await readFile(filePath);
+  // 文件存在，先清理重复的 import 语句
+  let content = await readFile(filePath);
+  content = deduplicateImports(content);
+
+  // 检查是否有基础架构
   if (!hasFileArchitecture(content)) {
-    // 没有基础架构，在文件开头添加
-    const architecture = generateFileArchitecture();
-    const updatedContent = architecture + content;
+    // 检查是否已有部分 import 语句，避免重复添加
+    const hasMockImport = content.includes('import Mock from "mockjs"');
+    const hasLodashImport = content.includes('import lodash from "lodash"');
+    const hasInsertFlag = content.includes('//[insert-flag]');
+
+    let updatedContent = content;
+
+    // 如果没有 Mock import，添加它
+    if (!hasMockImport) {
+      updatedContent = 'import Mock from "mockjs";\n' + updatedContent;
+    }
+
+    // 如果没有 lodash import，添加它
+    if (!hasLodashImport) {
+      updatedContent = 'import lodash from "lodash";\n' + updatedContent;
+    }
+
+    // 如果没有 insert-flag，在文件末尾添加
+    if (!hasInsertFlag) {
+      updatedContent = updatedContent.trim() + '\n\n//[insert-flag]\n';
+    }
+
     const { writeFile } = await import('fs/promises');
     await writeFile(filePath, updatedContent, 'utf-8');
+  } else {
+    // 即使有基础架构，也要清理重复的 import
+    const { writeFile } = await import('fs/promises');
+    await writeFile(filePath, content, 'utf-8');
   }
 }

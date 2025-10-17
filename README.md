@@ -188,6 +188,35 @@ const login = async (data: LoginRequest): Promise<LoginResponse> => {
 - `typesDir`: TypeScript 类型文件生成目录（默认：`./src/types/api`）
 - `apiFilter`: API 筛选配置（可选）
 
+### ⚠️ 重要配置说明
+
+#### 1. Prettier 忽略配置
+
+**需要将 `mock` 文件夹添加到 `.prettierrc` 的忽略文件中**，主要原因是格式化文件会影响 Mock.js 语法。
+
+在项目根目录创建或更新 `.prettierignore` 文件：
+
+```bash
+# .prettierignore
+mock/
+```
+
+或者在 `.prettierrc.json` 中添加忽略配置：
+
+```json
+{
+  "ignorePath": ".prettierignore"
+}
+```
+
+#### 2. Mock 目录配置
+
+**⚠️ 重要：`"mockDir": "./mock"` 不要更改**，因为 Mock 服务会去项目目录下查找 `mock` 文件。
+
+- Mock 服务器启动时会自动扫描项目根目录下的 `mock/` 文件夹
+- 如果修改了 `mockDir` 路径，可能导致 Mock 服务无法正确加载数据
+- 建议保持默认配置：`"mockDir": "./mock"`
+
 ### API 筛选配置
 
 通过 `apiFilter` 配置项，您可以精确控制需要导出和生成的 API 接口。支持**服务端过滤**（Apifox API）和**客户端过滤**（生成时）。

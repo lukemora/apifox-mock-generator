@@ -22,13 +22,16 @@ export function convertOpenAPIToEndpoints(openapi: any): ApiEndpoint[] {
           deprecated: op.deprecated || false,
           status: op['x-apifox-status'] || '',
           folderPath: op['x-apifox-folder'] || '',
-          parameters: op.parameters?.map((p: any) => ({
-            name: p.name,
-            in: p.in,
-            required: p.required || false,
-            type: p.schema?.type || 'string',
-            description: p.description
-          })),
+          parameters: op.parameters?.map((p: any) => {
+            const param = {
+              name: p.name,
+              in: p.in,
+              required: p.required || false,
+              type: p.schema?.type || 'string',
+              description: p.description
+            };
+            return param;
+          }),
           requestBody: op.requestBody?.content?.['application/json']?.schema,
           responseBody: op.responses?.['200']?.content?.['application/json']?.schema
         } as any);

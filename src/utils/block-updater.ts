@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { ensureDir, exists, readFile } from './file-operations.js';
 import { formatCode } from './code-formatter.js';
+import { deduplicateImports } from '../generators/templates/file-architecture.js';
 
 /**
  * 增量更新文件内容
@@ -91,6 +92,8 @@ export async function updateFileWithBlock(
       existingContent.slice(insertPosition);
   }
 
-  const formattedContent = await formatCode(updatedContent, filePath);
+  // 在格式化前先执行去重
+  const deduplicatedContent = deduplicateImports(updatedContent);
+  const formattedContent = await formatCode(deduplicatedContent, filePath);
   await fs.writeFile(filePath, formattedContent, 'utf-8');
 }

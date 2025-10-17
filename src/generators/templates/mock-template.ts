@@ -231,8 +231,16 @@ function generateMockTemplateForResponse(
           comment = ` // ${fieldDesc}`;
         }
 
-        // 强制所有键名都使用双引号包裹，保持一致性
-        const fieldKey = propSchema.type === 'array' ? `"${key}|0-11"` : `"${key}"`;
+        // 为数组字段生成正确的 Mock.js 语法
+        let fieldKey: string;
+        if (propSchema.type === 'array') {
+          // 对于数组类型，使用 Mock.js 的长度控制语法
+          // 注意：这需要在字符串模板中工作，而不是对象字面量
+          fieldKey = `"${key}|0-11"`;
+        } else {
+          fieldKey = `"${key}"`;
+        }
+
         objContent += `\n${indent}${fieldKey}: ${mockValue}${comma}${comment}`;
       });
       objContent += `\n${indent.slice(0, -1)}}`; // 减少一级缩进
@@ -241,7 +249,7 @@ function generateMockTemplateForResponse(
       if (needsSharedRandom) {
         const apiInfo = interfaceInfo || '接口';
         return `(() => {
-        const randomCode = Math.random() < 0.5 ? 1 : 0;
+        const randomCode = Math.random() < 0.05 ? 1 : 0;
         return ${objContent};
     })()`;
       }
@@ -255,6 +263,7 @@ function generateMockTemplateForResponse(
         indent + '\t',
         interfaceInfo
       );
+      // 为数组添加 Mock.js 的长度控制语法
       return `[${itemTemplate}]`;
 
     default:
@@ -283,7 +292,7 @@ function generateMockValueForField(
 
   // 特殊处理 code 字段，生成随机 0 或 1
   if (fieldName === 'code' && (schema.type === 'integer' || schema.type === 'number')) {
-    return 'Math.random() < 0.5 ? 1 : 0';
+    return 'Math.random() < 0.05 ? 1 : 0';
   }
 
   // 特殊处理 msg 字段，根据 code 值生成相应消息
