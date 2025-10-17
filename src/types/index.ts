@@ -12,28 +12,6 @@ export interface ApifoxConfig {
   mockPort: number;
   /** API 筛选配置（可选） */
   apiFilter?: ApiFilter;
-  /** 远程服务器配置（可选） */
-  remoteServer?: {
-    /** 远程服务器目标地址 */
-    target: string;
-    /** 请求超时时间（毫秒，默认 10000） */
-    timeout?: number;
-    /** 请求头配置 */
-    headers?: Record<string, string>;
-    /** 是否改变请求头中的 origin（默认 true） */
-    changeOrigin?: boolean;
-    /** 是否验证 SSL 证书（默认 true） */
-    secure?: boolean;
-    /** 路径重写规则 */
-    rewrite?: {
-      /** 路径重写规则，支持正则表达式 */
-      [pattern: string]: string | ((path: string) => string);
-    };
-    /** 是否记录代理日志（默认 false） */
-    logLevel?: 'silent' | 'info' | 'warn' | 'error';
-    /** 代理事件配置 */
-    configure?: (proxy: any, options: any) => void;
-  };
 }
 
 // API 筛选配置

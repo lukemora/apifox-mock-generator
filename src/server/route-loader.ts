@@ -42,10 +42,6 @@ export async function loadMockRoutes(
 
   const routes: MockRoute[] = [];
 
-  // 创建 RemoteProxy 实例
-  const { RemoteProxy } = await import('./remote-proxy.js');
-  const remoteProxy = new RemoteProxy(mockConfig!);
-
   // 逐个加载 mock 文件
   for (const filePath of mockFiles) {
     try {
@@ -91,22 +87,9 @@ export async function loadMockRoutes(
             if (checkFunction && typeof checkFunction === 'function') {
               const useLocalMock = checkFunction();
 
-              if (useLocalMock) {
-                // 使用本地 Mock 数据
-                logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
-                return handlerFunction(req.query, req.body, { req });
-              } else {
-                // 使用远程服务器数据
-                if (remoteProxy.isRemoteServerConfigured()) {
-                  logger.debug(`使用远程服务器数据: ${routeInfo.method} ${routeInfo.path}`);
-                  return remoteProxy.proxyRequest(req);
-                } else {
-                  logger.warn(
-                    `远程服务器未配置，回退到本地 Mock: ${routeInfo.method} ${routeInfo.path}`
-                  );
-                  return handlerFunction(req.query, req.body, { req });
-                }
-              }
+              // 使用本地 Mock 数据
+              logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
+              return handlerFunction(req.query, req.body, { req });
             } else {
               // 没有 check_ 函数，直接使用本地 Mock 数据
               logger.debug(
