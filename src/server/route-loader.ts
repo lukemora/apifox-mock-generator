@@ -87,20 +87,16 @@ export async function loadMockRoutes(config: ApifoxConfig): Promise<MockRoute[]>
 
               if (useLocalMock) {
                 // 使用本地 Mock 数据
-                logger.debug(
-                  `使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`,
-                );
+                logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
                 return handlerFunction(req.query, req.body, { req });
               } else {
                 // 使用远程服务器数据
                 if (remoteProxy.isRemoteServerConfigured()) {
-                  logger.debug(
-                    `使用远程服务器数据: ${routeInfo.method} ${routeInfo.path}`,
-                  );
+                  logger.debug(`使用远程服务器数据: ${routeInfo.method} ${routeInfo.path}`);
                   return remoteProxy.proxyRequest(req);
                 } else {
                   logger.warn(
-                    `远程服务器未配置，回退到本地 Mock: ${routeInfo.method} ${routeInfo.path}`,
+                    `远程服务器未配置，回退到本地 Mock: ${routeInfo.method} ${routeInfo.path}`
                   );
                   return handlerFunction(req.query, req.body, { req });
                 }
@@ -108,7 +104,7 @@ export async function loadMockRoutes(config: ApifoxConfig): Promise<MockRoute[]>
             } else {
               // 没有 check_ 函数，直接使用本地 Mock 数据
               logger.debug(
-                `未找到 check_ 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`,
+                `未找到 check_ 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`
               );
               return handlerFunction(req.query, req.body, { req });
             }
@@ -132,7 +128,7 @@ export async function loadMockRoutes(config: ApifoxConfig): Promise<MockRoute[]>
 export async function loadRouteFromFile(
   filePath: string,
   mockDir: string,
-  config: ApifoxConfig,
+  config: ApifoxConfig
 ): Promise<{ key: string; route: MockRoute } | null> {
   try {
     const remoteProxy = new RemoteProxy(config);
@@ -182,8 +178,7 @@ export async function loadRouteFromFile(
 
             // 检查 check_ 函数
             const methodName =
-              routeInfo.method.charAt(0).toUpperCase() +
-              routeInfo.method.slice(1).toLowerCase();
+              routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
             const checkFunctionName = `check_${methodName}`;
             const checkFunction = latestModule[checkFunctionName];
 
@@ -192,20 +187,18 @@ export async function loadRouteFromFile(
 
               if (useLocalMock) {
                 // 使用本地 Mock 数据
-                logger.debug(
-                  `热重载 - 使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`,
-                );
+                logger.debug(`热重载 - 使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
                 return latestHandler(req.query, req.body, { req });
               } else {
                 // 使用远程服务器数据
                 if (remoteProxy.isRemoteServerConfigured()) {
                   logger.debug(
-                    `热重载 - 使用远程服务器数据: ${routeInfo.method} ${routeInfo.path}`,
+                    `热重载 - 使用远程服务器数据: ${routeInfo.method} ${routeInfo.path}`
                   );
                   return remoteProxy.proxyRequest(req);
                 } else {
                   logger.warn(
-                    `热重载 - 远程服务器未配置，回退到本地 Mock: ${routeInfo.method} ${routeInfo.path}`,
+                    `热重载 - 远程服务器未配置，回退到本地 Mock: ${routeInfo.method} ${routeInfo.path}`
                   );
                   return latestHandler(req.query, req.body, { req });
                 }
@@ -213,14 +206,14 @@ export async function loadRouteFromFile(
             } else {
               // 没有 check_ 函数，直接使用本地 Mock 数据
               logger.debug(
-                `热重载 - 未找到 check_ 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`,
+                `热重载 - 未找到 check_ 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`
               );
               return latestHandler(req.query, req.body, { req });
             }
           } catch (err) {
             // 失败时使用原始函数
             logger.error(
-              `热重载失败，使用原始函数: ${err instanceof Error ? err.message : '未知错误'}`,
+              `热重载失败，使用原始函数: ${err instanceof Error ? err.message : '未知错误'}`
             );
             return handlerFunction(req.query, req.body, { req });
           }

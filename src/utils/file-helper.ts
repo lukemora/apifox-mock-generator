@@ -1,5 +1,5 @@
-import { formatCode } from './code-formatter.js'
-import { updateFileWithBlock } from './block-updater.js'
+import { formatCode } from './code-formatter.js';
+import { updateFileWithBlock } from './block-updater.js';
 import {
   ensureDir,
   readFile,
@@ -8,7 +8,7 @@ import {
   writeJson,
   exists,
   getProjectRoot
-} from './file-operations.js'
+} from './file-operations.js';
 
 /**
  * 文件助手工具集
@@ -28,7 +28,7 @@ export const fileHelper = {
    */
   async writeFile(filePath: string, content: string): Promise<void> {
     // 自动格式化代码
-    const formattedContent = await formatCode(content, filePath)
-    await writeFileRaw(filePath, formattedContent)
+    const formattedContent = await formatCode(content, filePath);
+    await writeFileRaw(filePath, formattedContent);
   }
-}
+};

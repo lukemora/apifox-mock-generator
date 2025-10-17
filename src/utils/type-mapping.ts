@@ -9,8 +9,8 @@ export function mapTypeToLodashCheck(type: string): string {
     'boolean': 'isBoolean',
     'array': 'isArray',
     'object': 'isObject'
-  }
-  return typeMap[type] || 'isObject'
+  };
+  return typeMap[type] || 'isObject';
 }
 
 /**
@@ -24,54 +24,54 @@ export function mapSchemaTypeToTS(type: string): string {
     'boolean': 'boolean',
     'array': 'any[]',
     'object': 'any'
-  }
-  return typeMap[type] || 'any'
+  };
+  return typeMap[type] || 'any';
 }
 
 /**
  * 获取 TypeScript 类型
  */
 export function getTypeScriptType(schema: any): string {
-  if (!schema) return 'any'
+  if (!schema) return 'any';
 
   if (schema.$ref) {
-    return schema.$ref.split('/').pop()
+    return schema.$ref.split('/').pop();
   }
 
   switch (schema.type) {
     case 'string':
       if (schema.enum && schema.enum.length > 0) {
-        return schema.enum.map((e: string) => `'${e}'`).join(' | ')
+        return schema.enum.map((e: string) => `'${e}'`).join(' | ');
       }
-      return 'string'
+      return 'string';
 
     case 'number':
     case 'integer':
       if (schema.enum && schema.enum.length > 0) {
-        return schema.enum.map((e: number) => e.toString()).join(' | ')
+        return schema.enum.map((e: number) => e.toString()).join(' | ');
       }
-      return 'number'
+      return 'number';
 
     case 'boolean':
       if (schema.enum && schema.enum.length > 0) {
-        return schema.enum.join(' | ')
+        return schema.enum.join(' | ');
       }
-      return 'boolean'
+      return 'boolean';
 
     case 'array':
-      return `${getTypeScriptType(schema.items)}[]`
+      return `${getTypeScriptType(schema.items)}[]`;
 
     case 'object':
       if (schema.properties) {
         const props = Object.entries(schema.properties)
           .map(([key, value]) => `'${key}': ${getTypeScriptType(value as any)}`)
-          .join('; ')
-        return `{ ${props} }`
+          .join('; ');
+        return `{ ${props} }`;
       }
-      return 'Record<string, any>'
+      return 'Record<string, any>';
 
     default:
-      return 'any'
+      return 'any';
   }
 }
 
@@ -79,13 +79,12 @@ export function getTypeScriptType(schema: any): string {
  * 获取 TypeScript 类型（支持枚举检查）
  */
 export function getTypeScriptTypeWithEnumCheck(schema: any, enumTypeName: string): string {
-  if (!schema) return 'any'
+  if (!schema) return 'any';
 
   // 如果有枚举，使用类型引用
   if (schema.enum && schema.enum.length > 0) {
-    return enumTypeName
+    return enumTypeName;
   }
 
-  return getTypeScriptType(schema)
+  return getTypeScriptType(schema);
 }
-

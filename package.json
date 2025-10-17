@@ -1,61 +1,48 @@
 {
-    "name": "apifox-mock-generator",
-    "version": "1.2.0",
-    "description": "从Apifox拉取API接口并生成本地mock和TypeScript类型文件",
-    "main": "dist/src/index.js",
-    "type": "module",
-    "bin": {
-        "apifox-mock": "dist/src/scripts/cli.js"
-    },
-    "scripts": {
-        "build": "tsc",
-        "generate": "node dist/src/scripts/generate-mock.js",
-        "serve": "node dist/src/scripts/serve-mock.js",
-        "dev": "npm run generate && npm run serve",
-        "prepublishOnly": "npm run build"
-    },
-    "files": [
-        "dist",
-        "README.md",
-        "LICENSE",
-        "CHANGELOG.md"
-    ],
-    "keywords": [
-        "apifox",
-        "mock",
-        "api",
-        "typescript",
-        "mock-server",
-        "openapi",
-        "code-generator"
-    ],
-    "author": "liujun",
-    "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/lukemora/apifox-mock-generator.git"
-    },
-    "homepage": "https://github.com/lukemora/apifox-mock-generator#readme",
-    "bugs": {
-        "url": "https://github.com/lukemora/apifox-mock-generator/issues"
-    },
-    "devDependencies": {
-        "@types/cors": "^2.8.19",
-        "@types/express": "^4.17.21",
-        "@types/mockjs": "^1.0.10",
-        "@types/node": "^20.11.0",
-        "chokidar": "^4.0.3",
-        "glob": "^11.0.3",
-        "prettier": "^3.6.2",
-        "typescript": "^5.3.3"
-    },
-    "dependencies": {
-        "@faker-js/faker": "^10.0.0",
-        "apifox-cli": "^1.2.0",
-        "axios": "^1.6.5",
-        "chalk": "^5.3.0",
-        "cors": "^2.8.5",
-        "express": "^4.18.2",
-        "mockjs": "^1.1.0"
-    }
+  "name": "apifox-mock-generator",
+  "version": "1.2.0",
+  "description": "从Apifox拉取API接口并生成本地mock和TypeScript类型文件",
+  "main": "dist/src/index.js",
+  "type": "module",
+  "bin": {
+    "apifox-mock": "dist/src/scripts/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "generate": "node dist/src/scripts/generate-mock.js",
+    "serve": "node dist/src/scripts/serve-mock.js",
+    "dev": "npm run generate && npm run serve",
+    "prepublishOnly": "npm run build"
+  },
+  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "keywords": ["apifox", "mock", "api", "typescript", "mock-server", "openapi", "code-generator"],
+  "author": "liujun",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lukemora/apifox-mock-generator.git"
+  },
+  "homepage": "https://github.com/lukemora/apifox-mock-generator#readme",
+  "bugs": {
+    "url": "https://github.com/lukemora/apifox-mock-generator/issues"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
+    "@types/mockjs": "^1.0.10",
+    "@types/node": "^20.11.0",
+    "chokidar": "^4.0.3",
+    "glob": "^11.0.3",
+    "prettier": "^3.6.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.0.0",
+    "apifox-cli": "^1.2.0",
+    "axios": "^1.6.5",
+    "chalk": "^5.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mockjs": "^1.1.0"
+  }
 }

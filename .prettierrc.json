@@ -27,10 +27,7 @@
       }
     },
     {
-      "files": [
-        "*.css",
-        "*.less"
-      ],
+      "files": ["*.css", "*.less"],
       "options": {
         "parser": "css",
         "printWidth": 120,
@@ -52,10 +49,7 @@
       }
     },
     {
-      "files": [
-        "*.html",
-        "*.htm"
-      ],
+      "files": ["*.html", "*.htm"],
       "options": {
         "parser": "html",
         "printWidth": 100,
@@ -78,10 +72,7 @@
       }
     },
     {
-      "files": [
-        "*.md",
-        "*.markdown"
-      ],
+      "files": ["*.md", "*.markdown"],
       "options": {
         "parser": "markdown",
         "printWidth": 80,

@@ -1,19 +1,31 @@
 {
-    "projectId": "7219799",
-    "token": "APS-XQrLSqLE4q0FOb0bGhaqYvTxSUQQFPeO",
-    "mockDir": "./mock",
-    "typesDir": "./src/types/mock",
-    "mockPort": 3000,
-    "apiFilter": {
-        "scope": {
-            "type": "ALL",
-            "excludedByTags": [
-                "设计中"
-            ]
-        },
-        "includePaths": [],
-        "excludePaths": [],
-        "excludeDeprecated": true,
-        "includeMethods": []
+  "projectId": "7219799",
+  "token": "APS-XQrLSqLE4q0FOb0bGhaqYvTxSUQQFPeO",
+  "mockDir": "./mock",
+  "typesDir": "./src/types/mock",
+  "mockPort": 3000,
+  "apiFilter": {
+    "scope": {
+      "type": "ALL",
+      "excludedByTags": ["设计中"],
+      "folderPaths": ["五、租户角色管理"]
+    },
+    "includePaths": ["/v1/tenant/permissions"],
+    "excludePaths": [],
+    "includeMethods": []
+  },
+  "remoteServer": {
+    "target": "http://localhost:8080",
+    "timeout": 10000,
+    "changeOrigin": true,
+    "secure": true,
+    "logLevel": "info",
+    "headers": {
+      "User-Agent": "apifox-mock-generator",
+      "Authorization": "Bearer your-token-here"
+    },
+    "rewrite": {
+      "^/v1": "/api/v1"
     }
+  }
 }

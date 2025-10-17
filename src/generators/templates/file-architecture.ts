@@ -7,12 +7,14 @@ export function generateFileArchitecture(): string {
 import lodash from "lodash";
 
 //[insert-flag]
-`
+`;
 }
 
 /**
  * 检查文件是否已有基础架构
  */
 export function hasFileArchitecture(content: string): boolean {
-  return content.includes('import Mock from "mockjs"') && content.includes('import lodash from "lodash"')
+  return (
+    content.includes('import Mock from "mockjs"') && content.includes('import lodash from "lodash"')
+  );
 }

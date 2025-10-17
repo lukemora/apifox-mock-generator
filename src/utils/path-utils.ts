@@ -1,4 +1,4 @@
-import type { ApiEndpoint } from '../types/index.js'
+import type { ApiEndpoint } from '../types/index.js';
 
 /**
  * 将路径和方法转换为文件名
@@ -11,25 +11,25 @@ export function pathToFileName(apiPath: string, method: string, operationId?: st
   if (operationId) {
     // getUserList -> users/list
     // createUser -> users/create
-    const match = operationId.match(/^(get|post|put|delete|patch)?(.+)$/i)
+    const match = operationId.match(/^(get|post|put|delete|patch)?(.+)$/i);
     if (match) {
-      const resource = match[2]
+      const resource = match[2];
 
       // 将驼峰转换为路径
       const fileName = resource
         .replace(/([A-Z])/g, '-$1')
         .toLowerCase()
-        .replace(/^-/, '')
+        .replace(/^-/, '');
 
-      return fileName
+      return fileName;
     }
   }
 
   // 移除开头的斜杠和参数占位符
-  let cleanPath = apiPath.replace(/^\//, '').replace(/\{[^}]+\}/g, 'detail')
+  let cleanPath = apiPath.replace(/^\//, '').replace(/\{[^}]+\}/g, 'detail');
 
   // 替换斜杠为路径分隔符
-  cleanPath = cleanPath.replace(/\//g, '/')
+  cleanPath = cleanPath.replace(/\//g, '/');
 
   // 根据方法名添加后缀
   const methodSuffix: Record<string, string> = {
@@ -38,20 +38,20 @@ export function pathToFileName(apiPath: string, method: string, operationId?: st
     'PUT': '/update',
     'DELETE': '/delete',
     'PATCH': '/patch'
-  }
+  };
 
-  const suffix = methodSuffix[method.toUpperCase()] || ''
-  return cleanPath + suffix
+  const suffix = methodSuffix[method.toUpperCase()] || '';
+  return cleanPath + suffix;
 }
 
 /**
  * 按路径分组接口，相同资源的接口放在同一个文件中
  */
 export function groupEndpointsByPath(endpoints: ApiEndpoint[]): Record<string, ApiEndpoint[]> {
-  const groups: Record<string, ApiEndpoint[]> = {}
+  const groups: Record<string, ApiEndpoint[]> = {};
 
   for (const endpoint of endpoints) {
-    const fileName = pathToFileName(endpoint.path, endpoint.method, (endpoint as any).operationId)
+    const fileName = pathToFileName(endpoint.path, endpoint.method, (endpoint as any).operationId);
 
     // 提取资源路径（去除方法后缀）
     let resourcePath = fileName
@@ -60,20 +60,19 @@ export function groupEndpointsByPath(endpoints: ApiEndpoint[]): Record<string, A
       .replace(/\/update$/, '')
       .replace(/\/delete$/, '')
       .replace(/\/detail$/, '')
-      .replace(/\/patch$/, '')
+      .replace(/\/patch$/, '');
 
     // 如果路径为空，使用文件名本身
     if (!resourcePath || resourcePath === fileName) {
-      resourcePath = fileName
+      resourcePath = fileName;
     }
 
     if (!groups[resourcePath]) {
-      groups[resourcePath] = []
+      groups[resourcePath] = [];
     }
 
-    groups[resourcePath].push(endpoint)
+    groups[resourcePath].push(endpoint);
   }
 
-  return groups
+  return groups;
 }
-
