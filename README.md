@@ -157,7 +157,6 @@ const login = async (data: LoginRequest): Promise<LoginResponse> => {
     },
     "includePaths": ["/api/auth/**", "/api/user/**"],
     "excludePaths": ["/api/admin/**"],
-    "excludeDeprecated": true,
     "includeMethods": ["GET", "POST"]
   }
 }
@@ -167,13 +166,12 @@ const login = async (data: LoginRequest): Promise<LoginResponse> => {
 
 **`scope` 配置** - 控制从 Apifox 导出哪些接口：
 
-| 参数             | 类型                                       | 说明                                                      |
-| ---------------- | ------------------------------------------ | --------------------------------------------------------- |
-| `type`           | `'ALL' \| 'FOLDER' \| 'TAG' \| 'API_LIST'` | 导出类型：全部/按文件夹/按标签/按 API ID                  |
-| `includedByTags` | `string[]`                                 | 包含的标签                                                |
-| `excludedByTags` | `string[]`                                 | 排除的接口状态（支持中文：`设计中`、`已废弃`、`待定` 等） |
-| `folderPath`     | `string`                                   | 文件夹路径（type 为 FOLDER 时）                           |
-| `apiIdList`      | `string[]`                                 | API ID 列表（type 为 API_LIST 时）                        |
+| 参数             | 类型                         | 说明                                                      |
+| ---------------- | ---------------------------- | --------------------------------------------------------- |
+| `type`           | `'ALL' \| 'FOLDER' \| 'TAG'` | 导出类型：全部/按文件夹/按标签                            |
+| `includedByTags` | `string[]`                   | 包含的标签                                                |
+| `excludedByTags` | `string[]`                   | 排除的接口状态（支持中文：`设计中`、`已废弃`、`待定` 等） |
+| `folderPaths`    | `string[]`                   | 文件夹路径列表（支持多个中文文件夹名称匹配）              |
 
 > 📝 **注意**: 系统默认启用 Apifox 扩展属性和文件夹标签功能，无需额外配置。
 
@@ -195,15 +193,12 @@ const login = async (data: LoginRequest): Promise<LoginResponse> => {
 
 在生成 Mock 和类型文件时进行二次过滤：
 
-| 参数                  | 类型       | 说明                                      |
-| --------------------- | ---------- | ----------------------------------------- |
-| `includePaths`        | `string[]` | 只包含这些路径（支持 `*` 和 `**` 通配符） |
-| `excludePaths`        | `string[]` | 排除这些路径                              |
-| `includeOperationIds` | `string[]` | 只包含这些 operationId                    |
-| `excludeOperationIds` | `string[]` | 排除这些 operationId                      |
-| `excludeDeprecated`   | `boolean`  | 排除废弃的接口                            |
-| `includeMethods`      | `string[]` | 只包含这些 HTTP 方法                      |
-| `excludeMethods`      | `string[]` | 排除这些 HTTP 方法                        |
+| 参数             | 类型       | 说明                                      |
+| ---------------- | ---------- | ----------------------------------------- |
+| `includePaths`   | `string[]` | 只包含这些路径（支持 `*` 和 `**` 通配符） |
+| `excludePaths`   | `string[]` | 排除这些路径                              |
+| `includeMethods` | `string[]` | 只包含这些 HTTP 方法                      |
+| `excludeMethods` | `string[]` | 排除这些 HTTP 方法                        |
 
 #### 常用场景
 

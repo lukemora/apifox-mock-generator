@@ -1,6 +1,7 @@
 import axios from 'axios'
 import * as https from 'https'
 import { logger } from '../utils/logger.js'
+import { saveOpenAPIData } from '../utils/file-utils.js'
 import type { ApifoxConfig } from '../types/index.js'
 
 /**
@@ -33,6 +34,9 @@ export async function fetchOpenAPIFromApifox(
       `✓ 从 Apifox 拉取成功（${Object.keys(response.data.paths || {}).length} 个接口）`,
     )
 
+    // 保存 OpenAPI 数据到日志文件
+    saveOpenAPIData(response.data, config.projectId)
+
     return response.data
   } catch (error) {
     handleApifoxError(error)
@@ -63,15 +67,11 @@ function buildRequestBody(config: ApifoxConfig): any {
       ) {
         scope.includedByTags = config.apiFilter.scope.includedByTags
       }
-      // excludedByTags 现在是客户端过滤，不再发送到服务端
-      if (config.apiFilter.scope.folderPath) {
-        scope.folderPath = config.apiFilter.scope.folderPath
-      }
       if (
-        config.apiFilter.scope.apiIdList &&
-        config.apiFilter.scope.apiIdList.length > 0
+        config.apiFilter.scope.folderPaths &&
+        config.apiFilter.scope.folderPaths.length > 0
       ) {
-        scope.apiIdList = config.apiFilter.scope.apiIdList
+        scope.folderPaths = config.apiFilter.scope.folderPaths
       }
 
       if (Object.keys(scope).length > 0) {

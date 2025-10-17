@@ -72,39 +72,13 @@ export function filterEndpoints(
       }
     }
 
-    // 3. 检查 includeOperationIds（如果配置了，必须匹配）
-    if (filter.includeOperationIds && filter.includeOperationIds.length > 0) {
-      if (
-        !endpoint.operationId ||
-        !filter.includeOperationIds.includes(endpoint.operationId)
-      ) {
-        logger.debug(
-          `[Filter] operationId 不匹配 includeOperationIds: ${endpoint.operationId}`,
-        )
-        return false
-      }
-    }
-
-    // 4. 检查 excludeOperationIds（如果匹配，则排除）
-    if (filter.excludeOperationIds && filter.excludeOperationIds.length > 0) {
-      if (
-        endpoint.operationId &&
-        filter.excludeOperationIds.includes(endpoint.operationId)
-      ) {
-        logger.debug(
-          `[Filter] operationId 匹配 excludeOperationIds，已排除: ${endpoint.operationId}`,
-        )
-        return false
-      }
-    }
-
-    // 5. 检查 excludeDeprecated（排除废弃接口）
-    if (filter.excludeDeprecated && endpoint.deprecated) {
+    // 3. 检查 excludeDeprecated（排除废弃接口，写死为 true）
+    if (endpoint.deprecated) {
       logger.debug(`[Filter] 废弃接口已排除: ${endpoint.path}`)
       return false
     }
 
-    // 6. 检查 includeMethods（如果配置了，必须匹配）
+    // 4. 检查 includeMethods（如果配置了，必须匹配）
     if (filter.includeMethods && filter.includeMethods.length > 0) {
       if (!filter.includeMethods.includes(endpoint.method.toUpperCase())) {
         logger.debug(`[Filter] 方法不匹配 includeMethods: ${endpoint.method}`)
@@ -112,7 +86,7 @@ export function filterEndpoints(
       }
     }
 
-    // 7. 检查 excludeMethods（如果匹配，则排除）
+    // 5. 检查 excludeMethods（如果匹配，则排除）
     if (filter.excludeMethods && filter.excludeMethods.length > 0) {
       if (filter.excludeMethods.includes(endpoint.method.toUpperCase())) {
         logger.debug(
@@ -122,7 +96,23 @@ export function filterEndpoints(
       }
     }
 
-    // 8. 检查 excludedByTags（基于接口状态过滤）
+    // 6. 检查 includedByTags（基于接口状态过滤）
+    if (
+      filter.scope?.includedByTags &&
+      filter.scope.includedByTags.length > 0
+    ) {
+      // 转换配置中的状态值（支持中文）
+      const includedStatuses = filter.scope.includedByTags.map(translateStatus)
+
+      if (!endpoint.status || !includedStatuses.includes(endpoint.status)) {
+        logger.debug(
+          `[Filter] 接口状态不匹配 includedByTags，已排除: ${endpoint.status} (期望: ${includedStatuses.join(', ')})`,
+        )
+        return false
+      }
+    }
+
+    // 7. 检查 excludedByTags（基于接口状态过滤）
     if (
       filter.scope?.excludedByTags &&
       filter.scope.excludedByTags.length > 0
@@ -133,6 +123,19 @@ export function filterEndpoints(
       if (endpoint.status && excludedStatuses.includes(endpoint.status)) {
         logger.debug(
           `[Filter] 接口状态匹配 excludedByTags，已排除: ${endpoint.status}`,
+        )
+        return false
+      }
+    }
+
+    // 8. 检查 folderPaths（基于文件夹路径过滤）
+    if (filter.scope?.folderPaths && filter.scope.folderPaths.length > 0) {
+      if (
+        !endpoint.folderPath ||
+        !filter.scope.folderPaths.includes(endpoint.folderPath)
+      ) {
+        logger.debug(
+          `[Filter] 文件夹路径不匹配，已排除: ${endpoint.folderPath} (期望: ${filter.scope.folderPaths.join(', ')})`,
         )
         return false
       }
