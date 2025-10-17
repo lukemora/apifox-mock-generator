@@ -34,7 +34,7 @@ export function generateMockEndpointContent(endpoint: ApiEndpoint, definitions?:
  */
 export const check_${namespaceName} = function () {
 \t//true 本地数据， false 远程服务器数据
-\treturn false;
+\treturn true;
 };
 
 export function ${namespaceName}(query, body, ctx) {

@@ -215,6 +215,90 @@ const login = async (data: LoginRequest): Promise<LoginResponse> => {
 }
 ```
 
+### 远程服务器代理配置
+
+通过 `remoteServer` 配置项，您可以配置远程服务器代理，支持类似 Vite proxy 的功能。
+
+#### 完整配置示例
+
+```json
+{
+  "remoteServer": {
+    "target": "http://localhost:8080",
+    "timeout": 10000,
+    "changeOrigin": true,
+    "secure": true,
+    "logLevel": "info",
+    "headers": {
+      "User-Agent": "apifox-mock-generator",
+      "Authorization": "Bearer your-token-here"
+    },
+    "rewrite": {
+      "^/api/v1": "/v1",
+      "^/old-path": "/new-path"
+    }
+  }
+}
+```
+
+#### 配置选项说明
+
+| 参数           | 类型      | 默认值  | 说明                                            |
+| -------------- | --------- | ------- | ----------------------------------------------- |
+| `target`       | `string`  | -       | 远程服务器目标地址                              |
+| `timeout`      | `number`  | `10000` | 请求超时时间（毫秒）                            |
+| `changeOrigin` | `boolean` | `true`  | 是否改变请求头中的 origin                       |
+| `secure`       | `boolean` | `true`  | 是否验证 SSL 证书                               |
+| `logLevel`     | `string`  | `info`  | 代理日志级别：`silent`、`info`、`warn`、`error` |
+| `headers`      | `object`  | `{}`    | 自定义请求头                                    |
+| `rewrite`      | `object`  | `{}`    | 路径重写规则                                    |
+
+#### 路径重写功能
+
+`rewrite` 配置支持正则表达式和函数两种方式：
+
+```json
+{
+  "rewrite": {
+    // 正则表达式替换
+    "^/api/v1": "/v1",
+    "^/old-path": "/new-path",
+
+    // 函数形式（需要重新生成配置）
+    "^/dynamic/(.*)": "/api/$1"
+  }
+}
+```
+
+#### 使用场景
+
+**场景 1：开发环境代理到测试服务器**
+
+```json
+{
+  "remoteServer": {
+    "target": "http://test-api.company.com",
+    "changeOrigin": true,
+    "headers": {
+      "Authorization": "Bearer test-token"
+    }
+  }
+}
+```
+
+**场景 2：本地开发代理到本地后端**
+
+```json
+{
+  "remoteServer": {
+    "target": "http://localhost:8080",
+    "rewrite": {
+      "^/api": ""
+    }
+  }
+}
+```
+
 **场景 2：只导出指定文件夹**
 
 ```json

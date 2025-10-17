@@ -6,3 +6,6 @@ generated/
 .env
 .env.local
 
+mock/
+types/mock/
+logs/

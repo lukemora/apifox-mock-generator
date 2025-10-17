@@ -12,6 +12,28 @@ export interface ApifoxConfig {
   mockPort: number
   /** API 筛选配置（可选） */
   apiFilter?: ApiFilter
+  /** 远程服务器配置（可选） */
+  remoteServer?: {
+    /** 远程服务器目标地址 */
+    target: string
+    /** 请求超时时间（毫秒，默认 10000） */
+    timeout?: number
+    /** 请求头配置 */
+    headers?: Record<string, string>
+    /** 是否改变请求头中的 origin（默认 true） */
+    changeOrigin?: boolean
+    /** 是否验证 SSL 证书（默认 true） */
+    secure?: boolean
+    /** 路径重写规则 */
+    rewrite?: {
+      /** 路径重写规则，支持正则表达式 */
+      [pattern: string]: string | ((path: string) => string)
+    }
+    /** 是否记录代理日志（默认 false） */
+    logLevel?: 'silent' | 'info' | 'warn' | 'error'
+    /** 代理事件配置 */
+    configure?: (proxy: any, options: any) => void
+  }
 }
 
 // API 筛选配置
@@ -24,17 +46,14 @@ export interface ApiFilter {
      * - ALL: 导出所有接口
      * - FOLDER: 按文件夹导出
      * - TAG: 按标签导出
-     * - API_LIST: 按 API ID 列表导出
      */
-    type?: 'ALL' | 'FOLDER' | 'TAG' | 'API_LIST'
+    type?: 'ALL' | 'FOLDER' | 'TAG'
     /** 包含的标签（仅当 type 为 TAG 时有效） */
     includedByTags?: string[]
     /** 排除的接口状态（通过标签字段实现） */
     excludedByTags?: string[]
-    /** 文件夹路径（仅当 type 为 FOLDER 时有效，如 "用户模块/用户管理"） */
-    folderPath?: string
-    /** API ID 列表（仅当 type 为 API_LIST 时有效） */
-    apiIdList?: string[]
+    /** 文件夹路径列表（仅当 type 为 FOLDER 时有效，支持多个中文文件夹名称匹配） */
+    folderPaths?: string[]
   }
 
   /** 导出选项配置（服务端选项） - 已废弃，相关选项已默认启用 */
@@ -50,12 +69,6 @@ export interface ApiFilter {
   includePaths?: string[]
   /** 排除的路径模式（支持通配符 * 和 **，客户端过滤） */
   excludePaths?: string[]
-  /** 包含的 operationId（客户端过滤） */
-  includeOperationIds?: string[]
-  /** 排除的 operationId（客户端过滤） */
-  excludeOperationIds?: string[]
-  /** 排除废弃的接口（客户端过滤） */
-  excludeDeprecated?: boolean
   /** 包含的 HTTP 方法（客户端过滤） */
   includeMethods?: string[]
   /** 排除的 HTTP 方法（客户端过滤） */

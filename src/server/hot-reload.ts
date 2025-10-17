@@ -33,7 +33,7 @@ export function setupHotReload(config: ApifoxConfig, routeManager: RouteManager)
   watcher
     .on('add', async (filePath) => {
       logger.info(`📝 检测到新文件: ${path.relative(mockDir, filePath)}`)
-      const result = await loadRouteFromFile(filePath, mockDir)
+      const result = await loadRouteFromFile(filePath, mockDir, config)
       if (result) {
         routeManager.setRoute(result.key, result.route)
         logger.success(`✓ 已加载路由: ${result.key}`)
@@ -41,7 +41,7 @@ export function setupHotReload(config: ApifoxConfig, routeManager: RouteManager)
     })
     .on('change', async (filePath) => {
       logger.info(`📝 文件已修改: ${path.relative(mockDir, filePath)}`)
-      const result = await loadRouteFromFile(filePath, mockDir)
+      const result = await loadRouteFromFile(filePath, mockDir, config)
       if (result) {
         routeManager.setRoute(result.key, result.route)
         logger.success(`✓ 已更新路由: ${result.key}`)
