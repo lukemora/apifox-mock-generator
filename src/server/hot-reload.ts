@@ -4,11 +4,18 @@ import { logger } from '../utils/logger.js';
 import { loadRouteFromFile } from './route-loader.js';
 import type { RouteManager } from './route-manager.js';
 import type { ApifoxConfig } from '../types/index.js';
+import type { MockConfig } from '../core/mock-config-loader.js';
 
 /**
  * 设置热重载
  */
-export function setupHotReload(config: ApifoxConfig, routeManager: RouteManager): void {
+export function setupHotReload(
+  config: ApifoxConfig,
+  routeManager: RouteManager,
+  mockConfig: MockConfig
+): void {
+  // 暂时禁用热重载功能
+  return;
   const mockDir = path.resolve(config.mockDir);
 
   logger.info('🔥 监听 Mock 文件变化...');
@@ -33,7 +40,7 @@ export function setupHotReload(config: ApifoxConfig, routeManager: RouteManager)
   watcher
     .on('add', async filePath => {
       logger.info(`📝 检测到新文件: ${path.relative(mockDir, filePath)}`);
-      const result = await loadRouteFromFile(filePath, mockDir, config);
+      const result = await loadRouteFromFile(filePath, mockDir, config, mockConfig);
       if (result) {
         routeManager.setRoute(result.key, result.route);
         logger.success(`✓ 已加载路由: ${result.key}`);
@@ -41,7 +48,7 @@ export function setupHotReload(config: ApifoxConfig, routeManager: RouteManager)
     })
     .on('change', async filePath => {
       logger.info(`📝 文件已修改: ${path.relative(mockDir, filePath)}`);
-      const result = await loadRouteFromFile(filePath, mockDir, config);
+      const result = await loadRouteFromFile(filePath, mockDir, config, mockConfig);
       if (result) {
         routeManager.setRoute(result.key, result.route);
         logger.success(`✓ 已更新路由: ${result.key}`);

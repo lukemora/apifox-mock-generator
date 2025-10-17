@@ -5,7 +5,7 @@ import { glob } from 'glob';
 import { fileHelper } from '../utils/file-helper.js';
 import { logger } from '../utils/logger.js';
 import type { ApifoxConfig, MockRoute } from '../types/index.js';
-import { RemoteProxy } from './remote-proxy.js';
+import type { MockConfig } from '../core/mock-config-loader.js';
 
 /**
  * 模块缓存映射
@@ -15,7 +15,10 @@ const moduleCache = new Map<string, number>();
 /**
  * 动态扫描并加载所有 Mock 文件
  */
-export async function loadMockRoutes(config: ApifoxConfig): Promise<MockRoute[]> {
+export async function loadMockRoutes(
+  config: ApifoxConfig,
+  mockConfig: MockConfig
+): Promise<MockRoute[]> {
   const mockDir = path.resolve(config.mockDir);
 
   // 检查 mock 目录是否存在
@@ -38,7 +41,10 @@ export async function loadMockRoutes(config: ApifoxConfig): Promise<MockRoute[]>
   }
 
   const routes: MockRoute[] = [];
-  const remoteProxy = new RemoteProxy(config);
+
+  // 创建 RemoteProxy 实例
+  const { RemoteProxy } = await import('./remote-proxy.js');
+  const remoteProxy = new RemoteProxy(mockConfig!);
 
   // 逐个加载 mock 文件
   for (const filePath of mockFiles) {
@@ -128,10 +134,12 @@ export async function loadMockRoutes(config: ApifoxConfig): Promise<MockRoute[]>
 export async function loadRouteFromFile(
   filePath: string,
   mockDir: string,
-  config: ApifoxConfig
+  config: ApifoxConfig,
+  mockConfig: MockConfig
 ): Promise<{ key: string; route: MockRoute } | null> {
   try {
-    const remoteProxy = new RemoteProxy(config);
+    const { RemoteProxy } = await import('./remote-proxy.js');
+    const remoteProxy = new RemoteProxy(mockConfig!);
     const fileUrl = pathToFileURL(path.resolve(filePath)).href;
 
     // 读取文件内容，提取路由信息

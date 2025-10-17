@@ -47,21 +47,57 @@ pnpm add apifox-mock-generator -D
 
 - ✅ **Node.js 16+** - 确保已安装 Node.js 16 或更高版本
 - ✅ **项目编译** - 运行 `npm run build` 编译 TypeScript 代码
-- ✅ **Apifox 配置** - 创建 `apifox.config.json` 配置文件
+- ✅ **Apifox 配置** - 创建 `apifox.config.json` 配置文件（用于 API 文档同步和 Mock 数据生成）
+- ✅ **Mock 配置** - 创建 `mock.config.js` 配置文件（用于 Mock 服务器运行时配置）
 - ✅ **Mock 文件生成** - 运行 `npm run generate` 生成 Mock 文件
 
 ### 1. 创建配置文件
+
+**创建 Apifox 配置文件** - 用于 API 文档同步和 Mock 数据生成：
 
 在你的项目根目录创建 `apifox.config.json`：
 
 ```json
 {
-  "projectId": "YOUR_PROJECT_ID",
-  "token": "YOUR_APIFOX_TOKEN",
+  "projectId": "7219799",
+  "token": "APS-XQrLSqLE4q0FOb0bGhaqYvTxSUQQFPeO",
   "mockDir": "./mock",
-  "typesDir": "./src/types/api",
-  "mockPort": 3000
+  "typesDir": "./src/types/mock",
+  "apiFilter": {
+    "scope": {
+      "type": "ALL",
+      "excludedByTags": ["设计中", "已废弃"],
+      "folderPaths": []
+    },
+    "includePaths": [],
+    "excludePaths": [],
+    "includeMethods": []
+  }
 }
+```
+
+**创建 Mock 服务器配置文件** - 用于控制 Mock 服务器运行时行为：
+
+创建 `mock.config.js`：
+
+```javascript
+export default {
+  model: 'mock',
+  https: false,
+  port: 10000,
+  target: 'http://localhost:8080',
+  remoteTarget: true,
+  handleMapPath(req) {
+    const url = req.req.url.slice(1);
+    const splitUrl = url.split('/');
+    const fileName = splitUrl[splitUrl.length - 1].split('?')[0];
+    const relativePath = splitUrl.splice(0, splitUrl.length - 1).join('/');
+    return {
+      relativePath,
+      fileName
+    };
+  }
+};
 ```
 
 ### 2. 配置 package.json 脚本
@@ -70,7 +106,7 @@ pnpm add apifox-mock-generator -D
 {
   "scripts": {
     "auto-mock": "apifox-mock generate",
-    "mock:serve": "apifox-mock serve",
+    "mock": "apifox-mock serve",
     "mock:dev": "apifox-mock dev"
   }
 }
@@ -79,13 +115,13 @@ pnpm add apifox-mock-generator -D
 ### 3. 生成 Mock 和类型文件
 
 ```bash
-npm run mock:generate
+pnpm auto-mock
 ```
 
 ### 4. 启动 Mock 服务器
 
 ```bash
-npm run mock:serve
+pnpm mock
 ```
 
 > ⚠️ **执行前提条件**：
@@ -103,8 +139,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true
+        target: 'http://localhost:10000', // 指向 Mock 服务器端口
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api/, '')
       }
     }
   }
@@ -127,13 +164,28 @@ const login = async (data: LoginRequest): Promise<LoginResponse> => {
 
 ## 🔧 配置说明
 
+本项目使用两个配置文件来管理不同的功能：
+
+### 📋 配置文件作用
+
+**1. `apifox.config.json`** - API 文档同步配置
+
+- **作用**：配置 Apifox 项目信息和生成路径
+- **功能**：负责从 Apifox 同步 API 文档，生成 Mock 数据和 TypeScript 类型定义
+- **使用时机**：运行 `npm run generate` 时使用
+
+**2. `mock.config.js`** - Mock 服务器运行时配置
+
+- **作用**：配置 Mock 服务器的运行时行为
+- **功能**：控制服务器端口、工作模式、代理目标等
+- **使用时机**：运行 `npm run mock` 时使用
+
 ### 基础配置
 
 - `projectId`: Apifox 项目 ID（在项目设置中查看）
 - `token`: Apifox API Token（在账号设置中生成）
 - `mockDir`: Mock 文件生成目录（默认：`./mock`）
 - `typesDir`: TypeScript 类型文件生成目录（默认：`./src/types/api`）
-- `mockPort`: Mock 服务器端口（默认：`3000`）
 - `apiFilter`: API 筛选配置（可选）
 
 ### API 筛选配置
@@ -149,7 +201,6 @@ const login = async (data: LoginRequest): Promise<LoginResponse> => {
   "outputDir": "./apifox-output",
   "mockDir": "./generated/mock",
   "typesDir": "./generated/types",
-  "mockPort": 3000,
   "apiFilter": {
     "scope": {
       "type": "ALL",
@@ -215,90 +266,6 @@ const login = async (data: LoginRequest): Promise<LoginResponse> => {
 }
 ```
 
-### 远程服务器代理配置
-
-通过 `remoteServer` 配置项，您可以配置远程服务器代理，支持类似 Vite proxy 的功能。
-
-#### 完整配置示例
-
-```json
-{
-  "remoteServer": {
-    "target": "http://localhost:8080",
-    "timeout": 10000,
-    "changeOrigin": true,
-    "secure": true,
-    "logLevel": "info",
-    "headers": {
-      "User-Agent": "apifox-mock-generator",
-      "Authorization": "Bearer your-token-here"
-    },
-    "rewrite": {
-      "^/api/v1": "/v1",
-      "^/old-path": "/new-path"
-    }
-  }
-}
-```
-
-#### 配置选项说明
-
-| 参数           | 类型      | 默认值  | 说明                                            |
-| -------------- | --------- | ------- | ----------------------------------------------- |
-| `target`       | `string`  | -       | 远程服务器目标地址                              |
-| `timeout`      | `number`  | `10000` | 请求超时时间（毫秒）                            |
-| `changeOrigin` | `boolean` | `true`  | 是否改变请求头中的 origin                       |
-| `secure`       | `boolean` | `true`  | 是否验证 SSL 证书                               |
-| `logLevel`     | `string`  | `info`  | 代理日志级别：`silent`、`info`、`warn`、`error` |
-| `headers`      | `object`  | `{}`    | 自定义请求头                                    |
-| `rewrite`      | `object`  | `{}`    | 路径重写规则                                    |
-
-#### 路径重写功能
-
-`rewrite` 配置支持正则表达式和函数两种方式：
-
-```json
-{
-  "rewrite": {
-    // 正则表达式替换
-    "^/api/v1": "/v1",
-    "^/old-path": "/new-path",
-
-    // 函数形式（需要重新生成配置）
-    "^/dynamic/(.*)": "/api/$1"
-  }
-}
-```
-
-#### 使用场景
-
-**场景 1：开发环境代理到测试服务器**
-
-```json
-{
-  "remoteServer": {
-    "target": "http://test-api.company.com",
-    "changeOrigin": true,
-    "headers": {
-      "Authorization": "Bearer test-token"
-    }
-  }
-}
-```
-
-**场景 2：本地开发代理到本地后端**
-
-```json
-{
-  "remoteServer": {
-    "target": "http://localhost:8080",
-    "rewrite": {
-      "^/api": ""
-    }
-  }
-}
-```
-
 **场景 2：只导出指定文件夹**
 
 ```json
@@ -340,6 +307,196 @@ const login = async (data: LoginRequest): Promise<LoginResponse> => {
 }
 ```
 
+### Mock 服务器配置
+
+**配置文件**：`mock.config.js`  
+**主要作用**：控制 Mock 服务器的运行时行为，包括端口、工作模式、代理目标等
+
+通过 `mock.config.js` 配置文件，您可以灵活配置 Mock 服务器的行为，支持多种工作模式和动态配置。
+
+#### 创建 Mock 配置文件
+
+在项目根目录创建 `mock.config.js`：
+
+**基础配置示例**：
+
+```javascript
+export default {
+  model: 'mock', // 工作模式
+  port: 10000, // Mock 服务器端口
+  target: 'http://localhost:8080', // 后端服务器地址
+  remoteTarget: true
+};
+```
+
+**完整配置示例**：
+
+```javascript
+/**
+ * Mock 服务器配置文件
+ */
+
+export default {
+  // 工作模式：'proxy', 'mock'，访问服务器或者访问本地数据。可以在query中写入$_mock，$_proxy定义单个请求
+  model: 'mock',
+  // 是否开启https
+  https: false,
+  // 本地服务的端口
+  port: 10000,
+  // 默认代理至系统测试环境, 请配置本地host
+  target: 'http://xxx.xxxx.com.cn',
+  // 开始remote参数, 通过url中remote=xxx来代理多个后端地址, 需要mock直接在url中设置remote=mock即可
+  remoteTarget: true,
+  // 处理映射路径
+  handleMapPath(req) {
+    const url = req.req.url.slice(1);
+    const splitUrl = url.split('/');
+    const fileName = splitUrl[splitUrl.length - 1].split('?')[0];
+    const relativePath = splitUrl.splice(0, splitUrl.length - 1).join('/');
+    if (!fileName || !relativePath) {
+      console.log('无映射路径文件名fileName值: ', fileName);
+      console.log(
+        '无映射路径文件路径relativePath值: ',
+        relativePath || '空映射路径'
+      );
+      return {
+        fileName: fileName || 'fileName',
+        relativePath: relativePath || './'
+      };
+    }
+    return {
+      relativePath,
+      fileName
+    };
+  }
+};
+```
+
+#### 配置选项说明
+
+| 参数            | 类型       | 默认值  | 说明                                                 |
+| --------------- | ---------- | ------- | ---------------------------------------------------- |
+| `model`         | `string`   | `mock`  | 工作模式：`mock`（本地数据）或 `proxy`（代理到远程） |
+| `https`         | `boolean`  | `false` | 是否开启 HTTPS                                       |
+| `port`          | `number`   | `10000` | Mock 服务器端口                                      |
+| `target`        | `string`   | -       | 远程服务器目标地址（代理模式使用）                   |
+| `remoteTarget`  | `boolean`  | `true`  | 是否支持 URL 参数控制（`?remote=mock`）              |
+| `handleMapPath` | `function` | -       | 路径映射处理函数，用于解析请求路径                   |
+
+#### 工作模式说明
+
+**1. Mock 模式（默认）**
+
+- 优先返回本地生成的 Mock 数据
+- 适合前端开发阶段
+
+**2. Proxy 模式**
+
+- 所有请求转发到 `target` 指定的远程服务器
+- 适合联调阶段
+
+**3. 动态切换**
+
+- 通过 URL 参数控制单个请求的行为：
+  - `?$_mock` - 强制使用 Mock 数据
+  - `?$_proxy` - 强制使用代理
+  - `?remote=mock` - 使用 Mock 模式
+
+### MockPort、Target 和 Vite Proxy 的关系
+
+理解这三个配置项的关系对于正确配置开发环境非常重要：
+
+#### 配置关系图
+
+```
+前端应用 (Vite Dev Server)
+    ↓ (API 请求 /api/v1/xxx)
+Vite Proxy 配置
+    ↓ (转发到 mockPort)
+Mock 服务器 (mockPort: 10000)
+    ↓ (根据 model 配置)
+├─ Mock 模式: 返回本地数据
+└─ Proxy 模式: 代理到 target
+     ↓
+真实后端服务器 (target: http://xxx.com)
+```
+
+#### 具体配置示例
+
+**1. Apifox 配置 (apifox.config.json)**
+
+```json
+{
+  "projectId": "YOUR_PROJECT_ID",
+  "token": "YOUR_TOKEN",
+  "mockDir": "./mock",
+  "typesDir": "./src/types/mock"
+}
+```
+
+**2. Vite 代理配置 (vite.config.ts)**
+
+```typescript
+export default defineConfig({
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:10000', // 指向 Mock 服务器
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api/, '')
+      }
+    }
+  }
+});
+```
+
+#### 数据流向说明
+
+1. **前端请求**: `http://localhost:5173/api/v1/user/info`
+2. **Vite 代理**: 转发到 `http://localhost:10000/v1/user/info`
+3. **Mock 服务器**: 根据 `model` 配置决定：
+   - `model: 'mock'`: 返回本地生成的 Mock 数据
+   - `model: 'proxy'`: 代理到 `http://localhost:8080/v1/user/info`
+
+#### 环境切换示例
+
+**开发阶段 (Mock 模式)**
+
+```javascript
+// mock.config.js
+export default {
+  model: 'mock', // 使用本地 Mock 数据
+  port: 10000,
+  target: 'http://localhost:8080'
+};
+```
+
+**联调阶段 (Proxy 模式)**
+
+```javascript
+// mock.config.js
+export default {
+  model: 'proxy', // 代理到真实后端
+  port: 10000,
+  target: 'http://test-api.company.com'
+};
+```
+
+**混合模式 (URL 参数控制)**
+
+```javascript
+// mock.config.js
+export default {
+  model: 'mock', // 默认 Mock 模式
+  port: 10000,
+  target: 'http://localhost:8080'
+};
+
+// 使用方式：
+// http://localhost:5173/api/v1/user/info          -> Mock 数据
+// http://localhost:5173/api/v1/user/info?$_proxy  -> 真实后端数据
+```
+
 ### 获取 Apifox Token
 
 1. 登录 [Apifox](https://www.apifox.cn/)
@@ -365,8 +522,8 @@ apifox-mock dev
 或者通过 npm scripts：
 
 ```bash
-npm run mock:generate
-npm run mock:serve
+npm run auto-mock
+npm run mock
 npm run mock:dev
 ```
 
@@ -379,7 +536,7 @@ npm run mock:dev
 #### 工作原理
 
 1. **在 Apifox 中配置** - 为每个字段设置 mock 规则（支持 Mock.js 语法和 Apifox 模板语法）
-2. **自动拉取规则** - 启用 `includeApifoxExtensionProperties` 后，导出的 OpenAPI 数据中会包含 `x-apifox-mock` 扩展字段
+2. **自动拉取规则** - 工具自动从 Apifox 导出的 OpenAPI 数据中提取 mock 规则
 3. **智能转换** - 自动将 Apifox 模板语法（如 `{{$string.uuid}}`）转换为 Mock.js 语法（如 `@guid`）
 4. **生成 Mock 文件** - 工具自动提取并转换 Apifox 的 mock 规则，生成本地 Mock 文件
 
@@ -484,24 +641,35 @@ npm run mock:serve
 │                  │ ② 生成                                  │
 │                  ↓                                          │
 │  ┌──────────────────────────────────────────────────────┐  │
+│  │  配置文件                                             │  │
+│  │  • apifox.config.json - API 生成配置                 │  │
+│  │  • mock.config.js     - Mock 服务器配置              │  │
+│  └───────────────┬──────────────────────────────────────┘  │
+│                  │ ③ 生成                                  │
+│                  ↓                                          │
+│  ┌──────────────────────────────────────────────────────┐  │
 │  │  生成的文件                                           │  │
 │  │  • mock/        - Mock 数据文件                      │  │
 │  │  • src/types/api/ - TypeScript 类型                  │  │
 │  └──────┬───────────────────────────────────────────┬───┘  │
 │         │                                            │      │
-│         │ ③ 导入类型                                 │ ④ 提供 Mock 数据
+│         │ ④ 导入类型                                 │ ⑤ HTTP 请求
 │         ↓                                            ↓      │
 │  ┌─────────────────┐                  ┌─────────────────┐  │
-│  │  前端代码       │    HTTP 请求     │  Mock 服务器    │  │
-│  │ (localhost:5173)│ ─────────────>  │ (localhost:3000)│  │
+│  │  前端代码       │    Vite Proxy    │  Mock 服务器    │  │
+│  │ (localhost:5173)│ ─────────────>  │ (localhost:10000)│  │
 │  │                 │  /api/**         │                 │  │
-│  │  • 业务逻辑     │                  │  • Express 服务 │  │
-│  │  • API 调用     │  <─────────────  │  • Mock 响应    │  │
-│  │  • TS 类型      │    Mock 数据     │  • 热重载       │  │
-│  └─────────────────┘                  └─────────────────┘  │
-│         ↑                                                   │
-│         │ ⑤ Vite/Webpack 代理转发                          │
-│         └───────────────────────────────────────────────┘  │
+│  │  • 业务逻辑     │                  │  • 工作模式切换 │  │
+│  │  • API 调用     │  <─────────────  │  • Mock/Proxy   │  │
+│  │  • TS 类型      │   响应数据       │  • 热重载       │  │
+│  └─────────────────┘                  └─────────┬───────┘  │
+│                                                  │          │
+│                                                  │ ⑥ 代理   │
+│                                                  ↓          │
+│                                            ┌─────────────┐  │
+│                                            │ 真实后端    │  │
+│                                            │ (target)    │  │
+│                                            └─────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -513,8 +681,11 @@ npm run mock:serve
 # 在你的 Vue 项目目录
 npm install apifox-mock-generator --save-dev
 
-# 创建配置文件
+# 创建 Apifox 配置文件
 vim apifox.config.json
+
+# 创建 Mock 服务器配置文件
+vim mock.config.js
 
 # 配置 package.json
 ```
@@ -538,7 +709,7 @@ npm run mock:generate
 npm run mock:serve
 ```
 
-在端口 3000 启动 Express 服务器。
+Mock 服务器会根据 `mock.config.js` 配置启动在指定端口（默认 10000）。
 
 #### 4️⃣ 配置前端代理
 
@@ -548,15 +719,40 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true
+        target: 'http://localhost:10000', // 指向 Mock 服务器端口
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api/, '')
       }
     }
   }
 });
 ```
 
-#### 5️⃣ 在代码中使用
+#### 5️⃣ 环境切换
+
+**开发阶段 (Mock 模式)**
+
+```javascript
+// mock.config.js
+export default {
+  model: 'mock', // 使用本地 Mock 数据
+  port: 10000,
+  target: 'http://localhost:8080'
+};
+```
+
+**联调阶段 (Proxy 模式)**
+
+```javascript
+// mock.config.js
+export default {
+  model: 'proxy', // 代理到真实后端
+  port: 10000,
+  target: 'http://test-api.company.com'
+};
+```
+
+#### 6️⃣ 在代码中使用
 
 ```typescript
 // 导入类型
@@ -592,6 +788,7 @@ your-vue-project/
 │       └── user/
 │           └── info.js
 ├── apifox.config.json          # ⚙️ 配置文件
+├── mock.config.js              # ⚙️ 配置文件
 ├── vite.config.ts              # 配置代理
 └── package.json
 ```
@@ -705,7 +902,7 @@ apifox-mock-generator/
 
 ### 2. 端口被占用？
 
-修改 `apifox.config.json` 中的 `mockPort` 配置。
+修改 `mock.config.js` 中的 `port` 配置。
 
 ### 3. 没有生成任何文件？
 
@@ -740,7 +937,7 @@ apifox-mock-generator/
 - ✅ **Mock 目录存在** - 确保 `mock/` 目录存在且不为空
 - ✅ **项目已编译** - 运行 `npm run build` 编译代码
 - ✅ **Mock 文件已生成** - 先运行 `npm run generate` 生成 Mock 文件
-- ✅ **端口未被占用** - 检查 `mockPort` 配置的端口是否可用
+- ✅ **端口未被占用** - 检查 `mock.config.js` 中 `port` 配置的端口是否可用
 
 常见错误及解决方案：
 
@@ -767,196 +964,28 @@ module.exports = {
   devServer: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true
+        target: 'http://localhost:10000',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api/, '')
       }
     }
   }
 };
 ```
 
-### React (Create React App)
-
-```javascript
-// package.json
-{
-  "proxy": "http://localhost:3000"
-}
-```
-
-或使用 `http-proxy-middleware`：
-
-```javascript
-// src/setupProxy.js
-const { createProxyMiddleware } = require('http-proxy-middleware');
-
-module.exports = function (app) {
-  app.use(
-    '/api',
-    createProxyMiddleware({
-      target: 'http://localhost:3000',
-      changeOrigin: true
-    })
-  );
-};
-```
-
-### Next.js
-
-```javascript
-// next.config.js
-module.exports = {
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:3000/api/:path*'
-      }
-    ];
-  }
-};
-```
-
-### 配置 .gitignore
-
-建议将以下文件添加到 `.gitignore`：
-
-```gitignore
-# Apifox 配置（包含敏感 token）
-apifox.config.json
-
-# 生成的 Mock 文件（可选）
-mock/
-
-# 生成的类型文件建议提交，方便团队共享
-# src/types/api/
-```
-
 ### 💡 最佳实践
 
-| 场景          | 建议                                                |
-| ------------- | --------------------------------------------------- |
-| **配置文件**  | `apifox.config.json` 不要提交，提供 `.example` 示例 |
-| **类型文件**  | 建议提交到 Git，团队共享类型定义                    |
-| **Mock 数据** | 可以不提交，每个开发者自行生成                      |
-| **切换环境**  | 后端完成后只需修改代理配置，代码无需改动            |
+| 场景          | 建议                                                     |
+| ------------- | -------------------------------------------------------- |
+| **配置文件**  | 首次配置好提交上库之后，apiFilter配置不提交上库          |
+| **类型文件**  | 建议提交到 Git，团队共享类型定义                         |
+| **Mock 数据** | apifox接口有变化时，若对应业务有调整，mock需一并提交处理 |
+| **切换环境**  | 后端完成后只需修改代理配置，代码无需改动                 |
 
 ## 📝 更新日志
 
-### v1.1.0 (2025-10-13)
-
-#### 🎯 核心功能
-
-- 🎭 **直接使用 Apifox Mock 规则** - 使用 Apifox 中配置的 mock 规则，本地与云端保持完全一致
-- 🔄 **统一管理** - Mock 规则在 Apifox 平台统一管理，团队协作更方便
-
-#### ✨ 新功能
-
-- ✅ 支持 Apifox 的 `x-apifox-mock` 扩展字段，提取 mock 规则
-- ✅ 智能转换 Apifox 模板语法（`{{$xxx}}`）为 Mock.js 语法（`@xxx`）
-- ✅ 同时支持 Mock.js 和 Apifox 两种语法
-- ✅ 完善的回退策略（示例值 → 枚举值 → 基本规则）
-
-#### 📖 文档更新
-
-- 新增"Apifox Mock 规则"章节，说明使用方法
-- 更新项目结构说明
-
-### v1.0.0 (2025-10-10)
-
-#### 核心功能
-
-- 🚀 **Apifox API 客户端** - 从 Apifox 项目拉取 API 接口定义
-- 📝 **类型生成器** - 自动生成 TypeScript 类型文件（.ts 格式）
-- 🎭 **Mock 生成器** - 基于 Schema 自动生成 Mock 数据文件
-- 🌐 **Mock 服务器** - 基于 Express 的本地 Mock 服务
-- 🔥 **热重载** - 修改 Mock 文件自动生效，无需重启服务器
-
-#### 高级特性
-
-- 🎯 **API 筛选** - 支持路径、方法、标签、操作 ID 等多维度筛选
-- ⚡ **增量更新** - 智能识别文件变化，仅更新必要的内容
-- 🎨 **代码格式化** - 使用 Prettier 格式化生成的代码
-- 🔄 **动态路由** - 自动发现和加载 Mock 路由，零配置
-- ⏱️ **延迟模拟** - 通过 `?_delay=1000` 参数模拟网络延迟
-- ✅ **参数校验** - 基于 Schema 的请求参数验证
-
-#### 支持的特性
-
-- ✅ OpenAPI 3.0 规范
-- ✅ HTTP 方法：GET、POST、PUT、DELETE、PATCH
-- ✅ 路径参数、查询参数、请求体、响应体
-- ✅ 复杂对象、数组、枚举、嵌套类型
-- ✅ Schema 引用 ($ref)、allOf / anyOf / oneOf
-
 详见 [CHANGELOG.md](./CHANGELOG.md) 获取完整更新日志。
-
-## 📦 发布到 npm
-
-如果你想 fork 并发布自己的版本：
-
-### 1. 修改配置
-
-```json
-// package.json
-{
-  "name": "your-package-name",
-  "version": "1.0.0",
-  "author": "Your Name",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourname/your-repo.git"
-  }
-}
-```
-
-### 2. 编译项目
-
-```bash
-npm run build
-```
-
-### 3. 发布
-
-```bash
-# 登录 npm（首次）
-npm login
-
-# 发布
-npm publish
-
-# 或发布为 scoped package
-npm publish --access public
-```
-
-### 4. 在项目中使用
-
-```bash
-npm install your-package-name --save-dev
-```
-
-## 👨‍💻 本地开发
-
-如果你想参与开发或自定义：
-
-```bash
-# 克隆项目
-git clone https://github.com/yourname/apifox-mock-generator.git
-cd apifox-mock-generator
-
-# 安装依赖
-npm install
-
-# 编译 TypeScript
-npm run build
-
-# 本地测试
-npm link
-
-# 在其他项目中使用本地版本
-cd your-test-project
-npm link apifox-mock-generator
-```
+`
 
 ## 🤝 贡献
 
@@ -994,6 +1023,6 @@ copies or substantial portions of the Software.
 
 ---
 
-如有问题或建议，欢迎提 [Issue](https://github.com/yourname/apifox-mock-generator/issues)！
+如有问题或建议，欢迎提 [Issue](https://github.com/lukemora/apifox-mock-generator/issues)！
 
 ⭐ 如果这个项目对你有帮助，请给一个 Star！
