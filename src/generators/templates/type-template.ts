@@ -269,6 +269,21 @@ function generateInterfaceBody(
     // 使用映射关系查找实际的schema名称
     const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
 
+    // 检查是否是标准响应体 schema，如果是则直接展开字段
+    // 标准响应体通常包含 code, msg, data 字段
+    if (definitions?.[decodedRefName]) {
+      const schema = definitions[decodedRefName];
+      if (
+        schema.properties &&
+        schema.properties.code &&
+        schema.properties.msg &&
+        schema.properties.data
+      ) {
+        // 这是一个标准响应体结构，直接展开字段而不是返回空对象
+        return generateStandardResponseBody(schema, definitions, context, schemaNameMap);
+      }
+    }
+
     if (definitions?.[decodedRefName]) {
       // 生成一个基于当前上下文的类型名称
       const interfaceName = `${typePrefix}${actualRefName}`;
@@ -336,12 +351,12 @@ function generateInterfaceBody(
         const resDataInterfaceName = 'ResData';
 
         // 检查data字段是否为null类型
-        if (prop.type === 'null' || prop.nullable === true) {
-          // 如果data为null，ResData应该是any类型
+        if (prop.type === 'null') {
+          // 只有当type明确为null时，ResData才应该是null类型
           if (!context.generatedTypes.has(resDataInterfaceName)) {
             context.complexTypes.set(
               resDataInterfaceName,
-              `export type ${resDataInterfaceName} = any;`
+              `export type ${resDataInterfaceName} = null;`
             );
             context.generatedTypes.add(resDataInterfaceName);
           }
@@ -603,6 +618,80 @@ function generateInterfaceBody(
 }
 
 /**
+ * 生成标准响应体结构
+ */
+function generateStandardResponseBody(
+  schema: any,
+  schemas: any,
+  context: TypeGenerationContext,
+  schemaNameMap?: Map<string, string>
+): string {
+  if (!schema.properties) {
+    return '{}';
+  }
+
+  let result = '{';
+  const required = schema.required || [];
+
+  // 处理标准响应体的字段：code, msg, data
+  for (const [propName, propSchema] of Object.entries(schema.properties)) {
+    const prop = propSchema as any;
+    const isRequired = required.includes(propName);
+    const optional = isRequired ? '' : '?';
+
+    // 生成注释
+    let comment = '';
+    const fieldDesc = prop.title || prop.description || '';
+    if (fieldDesc) {
+      comment = `\n    /** ${fieldDesc} */`;
+    }
+
+    // 生成类型
+    let tsType: string;
+
+    if (propName === 'data') {
+      // 特殊处理data字段：强制生成ResData接口
+      const resDataInterfaceName = 'ResData';
+
+      // 检查data字段是否为null类型
+      if (prop.type === 'null') {
+        // 只有当type明确为null时，ResData才应该是null类型
+        if (!context.generatedTypes.has(resDataInterfaceName)) {
+          context.complexTypes.set(
+            resDataInterfaceName,
+            `export type ${resDataInterfaceName} = null;`
+          );
+          context.generatedTypes.add(resDataInterfaceName);
+        }
+        tsType = resDataInterfaceName;
+      } else {
+        // 如果data不是null，生成正常的ResData接口
+        if (!context.generatedTypes.has(resDataInterfaceName)) {
+          const nestedInterface = generateNestedInterface(
+            prop,
+            schemas,
+            context,
+            resDataInterfaceName,
+            schemaNameMap
+          );
+          context.complexTypes.set(resDataInterfaceName, nestedInterface);
+          context.generatedTypes.add(resDataInterfaceName);
+        }
+        tsType = resDataInterfaceName;
+      }
+    } else {
+      // 其他字段使用标准类型映射
+      tsType = getTypeScriptType(prop, schemaNameMap, context, schemas, '');
+    }
+
+    result += `${comment}\n    ${propName}${optional}: ${tsType};`;
+  }
+
+  result += `\n  }`;
+  return result;
+}
+
+/**
  * 生成嵌套接口
  */
 function generateNestedInterface(
@@ -621,6 +710,27 @@ function generateNestedInterface(
     const refName = schema.$ref.split('/').pop();
     // 使用映射关系查找实际的schema名称
     const actualRefName = schemaNameMap?.get(refName || '') || refName;
+
+    // 检查是否是标准响应体 schema，如果是则直接展开字段
+    // 标准响应体通常包含 code, msg, data 字段
+    if (definitions?.[refName || '']) {
+      const schema = definitions[refName || ''];
+      if (
+        schema.properties &&
+        schema.properties.code &&
+        schema.properties.msg &&
+        schema.properties.data
+      ) {
+        // 这是一个标准响应体结构，直接展开字段而不是返回空接口
+        const standardBody = generateStandardResponseBody(
+          schema,
+          definitions,
+          context,
+          schemaNameMap
+        );
+        return `export interface ${interfaceName} ${standardBody}`;
+      }
+    }
 
     // 查找原始的中文schema名称
     const originalSchemaName = Array.from(schemaNameMap?.entries() || []).find(
