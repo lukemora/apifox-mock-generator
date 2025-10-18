@@ -49,7 +49,9 @@ export function ${namespaceName}(query, body, ctx) {
     
     let apiMethod = lodash.get(options, 'req.method');
     let originQuery = options.req.query;
-    let apiParams = apiMethod === 'GET' ? originQuery : JSON.parse(options.data || '{}');
+    let bodyData = JSON.parse(options.data || '{}');
+    // 合并query参数和body数据，body数据优先级更高
+    let apiParams = { ...originQuery, ...bodyData };
     
     // ${endpoint.name}
     
