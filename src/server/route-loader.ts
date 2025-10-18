@@ -13,6 +13,17 @@ import type { MockConfig } from '../core/mock-config-loader.js';
 const moduleCache = new Map<string, number>();
 
 /**
+ * 清除模块缓存
+ */
+export function clearModuleCache(filePath?: string) {
+  if (filePath) {
+    moduleCache.delete(filePath);
+  } else {
+    moduleCache.clear();
+  }
+}
+
+/**
  * 动态扫描并加载所有 Mock 文件
  */
 export async function loadMockRoutes(
@@ -138,7 +149,8 @@ export async function loadRouteFromFile(
     moduleCache.set(filePath, version);
 
     // 动态导入模块（带版本号避免缓存）
-    const mockModule = await import(fileUrl + `?v=${version}&t=${Date.now()}`);
+    const cacheBuster = `?v=${version}&t=${Date.now()}&r=${Math.random()}`;
+    const mockModule = await import(fileUrl + cacheBuster);
 
     // 获取导出的函数
     const handlerFunction =
@@ -158,7 +170,8 @@ export async function loadRouteFromFile(
         return (async () => {
           try {
             const latestVersion = moduleCache.get(filePath) || version;
-            const latestModule = await import(fileUrl + `?v=${latestVersion}&t=${Date.now()}`);
+            const cacheBuster = `?v=${latestVersion}&t=${Date.now()}&r=${Math.random()}`;
+            const latestModule = await import(fileUrl + cacheBuster);
             const latestHandler =
               latestModule.default ||
               Object.values(latestModule).find(exp => typeof exp === 'function' && exp.name);
