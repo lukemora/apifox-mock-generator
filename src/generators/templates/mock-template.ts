@@ -178,7 +178,7 @@ function generateMockTemplateForResponse(
 
   // 处理引用
   if (schema.$ref) {
-    const refName = schema.$ref.split('/').pop();
+    const refName = decodeURIComponent(schema.$ref.split('/').pop() || '');
     if (definitions?.[refName]) {
       return generateMockTemplateForResponse(
         definitions[refName],
@@ -264,12 +264,62 @@ function generateMockTemplateForResponse(
       return objContent;
 
     case 'array':
-      const itemTemplate = generateMockTemplateForResponse(
-        schema.items,
-        definitions,
-        indent + '\t',
-        interfaceInfo
-      );
+      // 处理数组类型，需要特别处理空对象和引用
+      let itemTemplate: string;
+
+      if (!schema.items) {
+        // 如果没有 items 定义，使用默认值
+        itemTemplate = '{}';
+      } else if (schema.items.$ref) {
+        // 处理引用类型的数组元素
+        const refName = decodeURIComponent(schema.items.$ref.split('/').pop() || '');
+        if (definitions?.[refName]) {
+          itemTemplate = generateMockTemplateForResponse(
+            definitions[refName],
+            definitions,
+            indent + '\t',
+            interfaceInfo
+          );
+        } else {
+          // 引用解析失败，使用默认对象结构
+          itemTemplate = '{}';
+        }
+      } else if (
+        schema.items.type === 'object' &&
+        (!schema.items.properties || Object.keys(schema.items.properties).length === 0)
+      ) {
+        // 处理空对象类型，尝试从 x-apifox-refs 中获取引用
+        if (schema.items['x-apifox-refs']) {
+          const refs = schema.items['x-apifox-refs'];
+          const refKey = Object.keys(refs)[0];
+          if (refKey && refs[refKey].$ref) {
+            const refName = refs[refKey].$ref.split('/').pop();
+            if (definitions?.[refName]) {
+              itemTemplate = generateMockTemplateForResponse(
+                definitions[refName],
+                definitions,
+                indent + '\t',
+                interfaceInfo
+              );
+            } else {
+              itemTemplate = '{}';
+            }
+          } else {
+            itemTemplate = '{}';
+          }
+        } else {
+          itemTemplate = '{}';
+        }
+      } else {
+        // 正常处理数组元素
+        itemTemplate = generateMockTemplateForResponse(
+          schema.items,
+          definitions,
+          indent + '\t',
+          interfaceInfo
+        );
+      }
+
       // 为数组添加 Mock.js 的长度控制语法
       return `[${itemTemplate}]`;
 
@@ -291,7 +341,7 @@ function generateMockValueForField(
 
   // 处理引用
   if (schema.$ref) {
-    const refName = schema.$ref.split('/').pop();
+    const refName = decodeURIComponent(schema.$ref.split('/').pop() || '');
     if (definitions?.[refName]) {
       return generateMockValueForField(fieldName, definitions[refName], definitions, interfaceInfo);
     }
@@ -363,7 +413,19 @@ function generateMockValueForField(
       return generateMockTemplateForResponse(schema, definitions);
 
     default:
-      return 'null';
+      // 对于未知类型，提供合理的默认值而不是 null
+      if (schema && typeof schema === 'object') {
+        // 如果是对象但没有明确的类型，尝试生成基本结构
+        if (schema.properties && Object.keys(schema.properties).length > 0) {
+          return generateMockTemplateForResponse(schema, definitions);
+        }
+        // 如果是数组但没有 items 定义，返回空数组
+        if (schema.type === 'array') {
+          return '[]';
+        }
+      }
+      // 最后的回退策略：对于字符串类型返回空字符串，其他类型返回空对象
+      return schema?.type === 'string' ? '""' : '{}';
   }
 }
 
