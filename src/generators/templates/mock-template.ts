@@ -49,9 +49,7 @@ export function ${namespaceName}(query, body, ctx) {
     
     let apiMethod = lodash.get(options, 'req.method');
     let originQuery = options.req.query;
-    let bodyData = JSON.parse(options.data || '{}');
-    // 合并query参数和body数据，body数据优先级更高
-    let apiParams = { ...originQuery, ...bodyData };
+    let bodyParams = JSON.parse(options.data || '{}');
     
     // ${endpoint.name}
     
@@ -60,6 +58,9 @@ export function ${namespaceName}(query, body, ctx) {
           mockParams
             ? `
         let mockParams = ${mockParams};
+        // 合并query参数和body参数，body参数优先级更高
+        let apiParams = { ...originQuery, ...bodyParams };
+        
         for(let i = 0, len = mockParams.length; i < len; i++) {
             let param =  mockParams[i];
             if (param.paramIsRequired && !apiParams.hasOwnProperty(param.paramKey)) {
@@ -68,10 +69,14 @@ export function ${namespaceName}(query, body, ctx) {
                     msg: '缺少必要参数: ' + param.paramKey
                 }
             }
-            if (apiParams.hasOwnProperty(param.paramKey) && lodash[param.paramType] && !lodash[param.paramType](apiParams[param.paramKey])) {
-                return {
-                    code: 1,
-                    msg: '参数类型错误: ' + param.paramKey
+            // 只对body参数进行类型校验，query参数跳过类型校验
+            if (apiParams.hasOwnProperty(param.paramKey) && bodyParams.hasOwnProperty(param.paramKey)) {
+                // 如果参数来自body，进行类型校验
+                if (lodash[param.paramType] && !lodash[param.paramType](apiParams[param.paramKey])) {
+                    return {
+                        code: 1,
+                        msg: '参数类型错误: ' + param.paramKey
+                    }
                 }
             }
         }

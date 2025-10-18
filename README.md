@@ -29,7 +29,7 @@
 - ⚡ **增量更新** - 智能识别文件变化，仅更新必要内容
 - 🎨 **代码格式化** - 使用 Prettier 自动格式化生成的代码
 - 🔄 **动态路由** - 自动发现和加载 Mock 路由，零配置
-- ✅ **参数校验** - 基于 Schema 的请求参数验证
+- ✅ **智能参数校验** - 根据参数来源（query/body）进行差异化校验，符合HTTP协议标准
 
 ## 📦 安装
 
@@ -557,6 +557,75 @@ npm run mock:dev
 ```
 
 ## 🎯 高级用法
+
+### 🔧 智能参数校验
+
+本工具采用**智能参数校验策略**，根据参数来源（query参数 vs body参数）进行差异化处理，符合HTTP协议标准。
+
+#### 校验策略
+
+| 参数来源      | 类型校验 | 说明                                        |
+| ------------- | -------- | ------------------------------------------- |
+| **Query参数** | ❌ 跳过  | URL查询参数永远是字符串，类型转换是后端职责 |
+| **Body参数**  | ✅ 校验  | 请求体参数支持严格类型校验                  |
+
+#### 工作原理
+
+```javascript
+// 生成的Mock文件中的参数校验逻辑
+let originQuery = options.req.query; // URL查询参数
+let bodyParams = JSON.parse(options.data || '{}'); // 请求体参数
+
+// 合并参数，body参数优先级更高
+let apiParams = { ...originQuery, ...bodyParams };
+
+// 智能校验：只对body参数进行类型校验
+if (
+  apiParams.hasOwnProperty(param.paramKey) &&
+  bodyParams.hasOwnProperty(param.paramKey)
+) {
+  // 参数来自body，进行类型校验
+  if (
+    lodash[param.paramType] &&
+    !lodash[param.paramType](apiParams[param.paramKey])
+  ) {
+    return { code: 1, msg: '参数类型错误: ' + param.paramKey };
+  }
+}
+// query参数跳过类型校验
+```
+
+#### 实际应用场景
+
+**场景1：GET请求 - 只有query参数**
+
+```javascript
+GET /api/users?pageNum=1&pageSize=10
+// ✅ pageNum和pageSize跳过类型校验，因为来自URL查询参数
+```
+
+**场景2：POST请求 - 只有body参数**
+
+```javascript
+POST /api/users
+Body: { "name": "张三", "age": 25 }
+// ✅ name和age进行类型校验，因为来自请求体
+```
+
+**场景3：POST请求 - 混合参数**
+
+```javascript
+POST /api/users?pageNum=1
+Body: { "name": "张三", "age": 25 }
+// ✅ pageNum跳过类型校验（来自query），name和age进行类型校验（来自body）
+```
+
+#### 优势
+
+- ✅ **符合HTTP标准** - 正确处理URL查询参数的特性
+- ✅ **灵活校验** - 支持query和body参数的差异化处理
+- ✅ **向后兼容** - 保持必要参数的存在性校验
+- ✅ **开发友好** - 避免因query参数类型导致的误报
 
 ### 🎭 Apifox Mock 规则
 
