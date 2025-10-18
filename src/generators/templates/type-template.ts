@@ -149,7 +149,7 @@ function generateRequestTypes(
       endpoint.requestBody,
       schemas,
       context,
-      'Req',
+      'ReqData',
       schemaNameMap
     );
     if (requestType.startsWith('export interface')) {
@@ -157,17 +157,17 @@ function generateRequestTypes(
       content += `\n  ${requestType}`;
     } else if (requestType.startsWith('{')) {
       // 如果返回的是对象字面量，直接使用
-      content += `\n  export interface Req ${requestType}`;
+      content += `\n  export interface ReqData ${requestType}`;
     } else {
       // 如果返回的是类型名称，生成完整的接口定义而不是继承
       const referencedInterface = context.complexTypes.get(requestType);
       if (referencedInterface) {
         // 提取接口体内容，去掉 export interface 部分
         const interfaceBody = referencedInterface.replace(/export interface \w+ /, '');
-        content += `\n  export interface Req ${interfaceBody}`;
+        content += `\n  export interface ReqData ${interfaceBody}`;
       } else {
         // 如果没有找到引用的接口，使用继承作为后备
-        content += `\n  export interface Req extends ${requestType} {}`;
+        content += `\n  export interface ReqData extends ${requestType} {}`;
       }
     }
   }
@@ -189,7 +189,7 @@ function generateRequestTypes(
   const queryParams = endpoint.parameters?.filter(p => p.in === 'query') || [];
   if (queryParams.length > 0) {
     content += `\n\n  /** 查询参数 */`;
-    content += `\n  export interface QueryParams {`;
+    content += `\n  export interface Query {`;
     queryParams.forEach(param => {
       const optional = param.required ? '' : '?';
       const description = param.description ? `\n    /** ${param.description} */` : '';
@@ -201,7 +201,7 @@ function generateRequestTypes(
   // 生成统一的请求类型
   if (pathParams.length > 0 || queryParams.length > 0 || endpoint.requestBody) {
     content += `\n\n  /** 完整请求参数 */`;
-    content += `\n  export interface Request {`;
+    content += `\n  export interface Req {`;
 
     if (pathParams.length > 0) {
       content += `\n    /** 路径参数 */`;
@@ -210,12 +210,12 @@ function generateRequestTypes(
 
     if (queryParams.length > 0) {
       content += `\n    /** 查询参数 */`;
-      content += `\n    query?: QueryParams;`;
+      content += `\n    query?: Query;`;
     }
 
     if (endpoint.requestBody) {
       content += `\n    /** 请求体 */`;
-      content += `\n    body: Req;`;
+      content += `\n    body: ReqData;`;
     }
 
     content += `\n  }`;
@@ -331,75 +331,40 @@ function generateInterfaceBody(
       // 生成类型
       let tsType: string;
 
-      // 处理 Apifox 数据模型引用
-      if (prop['x-apifox-refs']) {
-        const refs = prop['x-apifox-refs'];
-        const refKeys = Object.keys(refs);
+      // 特殊处理data字段：强制生成ResData接口
+      if (propName === 'data') {
+        const resDataInterfaceName = 'ResData';
 
-        if (refKeys.length > 0) {
-          const ref = refs[refKeys[0]];
-          if (ref && ref.$ref) {
-            const refName = ref.$ref.split('/').pop();
-            const decodedRefName = decodeURIComponent(refName || '');
-            const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
-
-            // 为 Apifox 数据模型生成新的类型名称，避免与原始 schema 名称冲突
-            const interfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}`;
-            tsType = interfaceName;
-
-            // 生成数据模型接口定义
-            if (!context.generatedTypes.has(interfaceName)) {
-              const nestedInterface = generateNestedInterface(
-                definitions?.[decodedRefName],
-                definitions,
-                context,
-                interfaceName,
-                schemaNameMap
-              );
-              context.complexTypes.set(interfaceName, nestedInterface);
-              context.generatedTypes.add(interfaceName);
-            }
-          } else {
-            tsType = getTypeScriptType(prop, schemaNameMap, context, definitions, typePrefix);
+        // 检查data字段是否为null类型
+        if (prop.type === 'null' || prop.nullable === true) {
+          // 如果data为null，ResData应该是any类型
+          if (!context.generatedTypes.has(resDataInterfaceName)) {
+            context.complexTypes.set(
+              resDataInterfaceName,
+              `export type ${resDataInterfaceName} = any;`
+            );
+            context.generatedTypes.add(resDataInterfaceName);
           }
+          tsType = resDataInterfaceName;
         } else {
-          tsType = getTypeScriptType(prop, schemaNameMap, context, definitions, typePrefix);
+          // 如果data不是null，生成正常的ResData接口
+          if (!context.generatedTypes.has(resDataInterfaceName)) {
+            const nestedInterface = generateNestedInterface(
+              prop,
+              definitions,
+              context,
+              resDataInterfaceName,
+              schemaNameMap
+            );
+            context.complexTypes.set(resDataInterfaceName, nestedInterface);
+            context.generatedTypes.add(resDataInterfaceName);
+          }
+          tsType = resDataInterfaceName;
         }
-      } else if (prop.enum && prop.enum.length > 0) {
-        // 枚举类型，生成独立类型
-        const enumTypeName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}`;
-        tsType = enumTypeName;
-
-        // 生成枚举类型定义
-        if (!context.generatedTypes.has(enumTypeName)) {
-          const enumValues = prop.enum
-            .map((v: any) => (typeof v === 'string' ? `'${v}'` : v))
-            .join(' | ');
-          context.complexTypes.set(enumTypeName, `export type ${enumTypeName} = ${enumValues};`);
-          context.generatedTypes.add(enumTypeName);
-        }
-      } else if (prop.type === 'object' && prop.properties) {
-        // 嵌套对象，生成独立接口
-        const interfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}`;
-        tsType = interfaceName;
-
-        // 生成嵌套接口定义
-        if (!context.generatedTypes.has(interfaceName)) {
-          const nestedInterface = generateNestedInterface(
-            prop,
-            definitions,
-            context,
-            interfaceName,
-            schemaNameMap
-          );
-          context.complexTypes.set(interfaceName, nestedInterface);
-          context.generatedTypes.add(interfaceName);
-        }
-      } else if (prop.type === 'array' && prop.items) {
-        // 处理数组类型
-        if (prop.items['x-apifox-refs']) {
-          // 数组项是 Apifox 数据模型引用
-          const refs = prop.items['x-apifox-refs'];
+      } else {
+        // 处理 Apifox 数据模型引用
+        if (prop['x-apifox-refs']) {
+          const refs = prop['x-apifox-refs'];
           const refKeys = Object.keys(refs);
 
           if (refKeys.length > 0) {
@@ -410,20 +375,101 @@ function generateInterfaceBody(
               const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
 
               // 为 Apifox 数据模型生成新的类型名称，避免与原始 schema 名称冲突
-              const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
-              tsType = `${itemInterfaceName}[]`;
+              const interfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}`;
+              tsType = interfaceName;
 
-              // 生成数组项接口定义
-              if (!context.generatedTypes.has(itemInterfaceName)) {
-                const itemInterface = generateNestedInterface(
+              // 生成数据模型接口定义
+              if (!context.generatedTypes.has(interfaceName)) {
+                const nestedInterface = generateNestedInterface(
                   definitions?.[decodedRefName],
                   definitions,
                   context,
-                  itemInterfaceName,
+                  interfaceName,
                   schemaNameMap
                 );
-                context.complexTypes.set(itemInterfaceName, itemInterface);
-                context.generatedTypes.add(itemInterfaceName);
+                context.complexTypes.set(interfaceName, nestedInterface);
+                context.generatedTypes.add(interfaceName);
+              }
+            } else {
+              tsType = getTypeScriptType(prop, schemaNameMap, context, definitions, typePrefix);
+            }
+          } else {
+            tsType = getTypeScriptType(prop, schemaNameMap, context, definitions, typePrefix);
+          }
+        } else if (prop.enum && prop.enum.length > 0) {
+          // 枚举类型，生成独立类型
+          const enumTypeName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}`;
+          tsType = enumTypeName;
+
+          // 生成枚举类型定义
+          if (!context.generatedTypes.has(enumTypeName)) {
+            const enumValues = prop.enum
+              .map((v: any) => (typeof v === 'string' ? `'${v}'` : v))
+              .join(' | ');
+            context.complexTypes.set(enumTypeName, `export type ${enumTypeName} = ${enumValues};`);
+            context.generatedTypes.add(enumTypeName);
+          }
+        } else if (prop.type === 'object' && prop.properties) {
+          // 嵌套对象，生成独立接口
+          const interfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}`;
+          tsType = interfaceName;
+
+          // 生成嵌套接口定义
+          if (!context.generatedTypes.has(interfaceName)) {
+            const nestedInterface = generateNestedInterface(
+              prop,
+              definitions,
+              context,
+              interfaceName,
+              schemaNameMap
+            );
+            context.complexTypes.set(interfaceName, nestedInterface);
+            context.generatedTypes.add(interfaceName);
+          }
+        } else if (prop.type === 'array' && prop.items) {
+          // 处理数组类型
+          if (prop.items['x-apifox-refs']) {
+            // 数组项是 Apifox 数据模型引用
+            const refs = prop.items['x-apifox-refs'];
+            const refKeys = Object.keys(refs);
+
+            if (refKeys.length > 0) {
+              const ref = refs[refKeys[0]];
+              if (ref && ref.$ref) {
+                const refName = ref.$ref.split('/').pop();
+                const decodedRefName = decodeURIComponent(refName || '');
+                const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
+
+                // 为 Apifox 数据模型生成新的类型名称，避免与原始 schema 名称冲突
+                const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
+                tsType = `${itemInterfaceName}[]`;
+
+                // 生成数组项接口定义
+                if (!context.generatedTypes.has(itemInterfaceName)) {
+                  const itemInterface = generateNestedInterface(
+                    definitions?.[decodedRefName],
+                    definitions,
+                    context,
+                    itemInterfaceName,
+                    schemaNameMap
+                  );
+                  context.complexTypes.set(itemInterfaceName, itemInterface);
+                  context.generatedTypes.add(itemInterfaceName);
+                }
+              } else {
+                const itemType = getTypeScriptType(
+                  prop.items,
+                  schemaNameMap,
+                  context,
+                  definitions,
+                  typePrefix
+                );
+                if (itemType.startsWith('__GENERATE_TYPE__')) {
+                  const interfaceName = itemType.replace('__GENERATE_TYPE__', '');
+                  tsType = `${interfaceName}[]`;
+                } else {
+                  tsType = `${itemType}[]`;
+                }
               }
             } else {
               const itemType = getTypeScriptType(
@@ -436,63 +482,69 @@ function generateInterfaceBody(
               if (itemType.startsWith('__GENERATE_TYPE__')) {
                 const interfaceName = itemType.replace('__GENERATE_TYPE__', '');
                 tsType = `${interfaceName}[]`;
+
+                // 类型定义已经在 getTypeScriptType 中通过 __GENERATE_TYPE__ 标记了
+                // 但是我们需要确保它被生成，所以这里再次检查并生成
+                if (!context.generatedTypes.has(interfaceName)) {
+                  const schemaName = interfaceName.replace(typePrefix, '');
+                  const originalSchemaName = Array.from(schemaNameMap?.entries() || []).find(
+                    ([key, value]) => value === schemaName
+                  )?.[0];
+
+                  if (originalSchemaName && definitions?.[originalSchemaName]) {
+                    const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
+                    const itemInterface = generateNestedInterface(
+                      definitions[originalSchemaName],
+                      definitions,
+                      context,
+                      itemInterfaceName,
+                      schemaNameMap
+                    );
+                    context.complexTypes.set(itemInterfaceName, itemInterface);
+                    context.generatedTypes.add(itemInterfaceName);
+                    tsType = `${itemInterfaceName}[]`;
+                  }
+                }
               } else {
                 tsType = `${itemType}[]`;
               }
             }
-          } else {
-            const itemType = getTypeScriptType(
-              prop.items,
-              schemaNameMap,
-              context,
-              definitions,
-              typePrefix
-            );
-            if (itemType.startsWith('__GENERATE_TYPE__')) {
-              const interfaceName = itemType.replace('__GENERATE_TYPE__', '');
-              tsType = `${interfaceName}[]`;
+          } else if (prop.items.$ref) {
+            // 数组项是引用类型
+            const refName = prop.items.$ref.split('/').pop();
+            const decodedRefName = decodeURIComponent(refName || '');
+            const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
 
-              // 类型定义已经在 getTypeScriptType 中通过 __GENERATE_TYPE__ 标记了
-              // 但是我们需要确保它被生成，所以这里再次检查并生成
-              if (!context.generatedTypes.has(interfaceName)) {
-                const schemaName = interfaceName.replace(typePrefix, '');
-                const originalSchemaName = Array.from(schemaNameMap?.entries() || []).find(
-                  ([key, value]) => value === schemaName
-                )?.[0];
+            if (definitions?.[decodedRefName]) {
+              // 为 Apifox 数据模型生成新的类型名称，避免与原始 schema 名称冲突
+              const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
+              tsType = `${itemInterfaceName}[]`;
 
-                if (originalSchemaName && definitions?.[originalSchemaName]) {
-                  const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
-                  const itemInterface = generateNestedInterface(
-                    definitions[originalSchemaName],
-                    definitions,
-                    context,
-                    itemInterfaceName,
-                    schemaNameMap
-                  );
-                  context.complexTypes.set(itemInterfaceName, itemInterface);
-                  context.generatedTypes.add(itemInterfaceName);
-                  tsType = `${itemInterfaceName}[]`;
-                }
+              // 生成数组项接口定义
+              if (!context.generatedTypes.has(itemInterfaceName)) {
+                const itemInterface = generateNestedInterface(
+                  definitions[decodedRefName],
+                  definitions,
+                  context,
+                  itemInterfaceName,
+                  schemaNameMap
+                );
+                context.complexTypes.set(itemInterfaceName, itemInterface);
+                context.generatedTypes.add(itemInterfaceName);
               }
             } else {
-              tsType = `${itemType}[]`;
+              // 如果没有找到 schema 定义，使用原始名称
+              tsType = `${actualRefName}[]`;
             }
-          }
-        } else if (prop.items.$ref) {
-          // 数组项是引用类型
-          const refName = prop.items.$ref.split('/').pop();
-          const decodedRefName = decodeURIComponent(refName || '');
-          const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
-
-          if (definitions?.[decodedRefName]) {
-            // 为 Apifox 数据模型生成新的类型名称，避免与原始 schema 名称冲突
+          } else if (prop.items.type === 'object' && prop.items.properties) {
+            // 数组中的对象，生成独立接口
             const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
             tsType = `${itemInterfaceName}[]`;
 
             // 生成数组项接口定义
             if (!context.generatedTypes.has(itemInterfaceName)) {
               const itemInterface = generateNestedInterface(
-                definitions[decodedRefName],
+                prop.items,
                 definitions,
                 context,
                 itemInterfaceName,
@@ -502,57 +554,37 @@ function generateInterfaceBody(
               context.generatedTypes.add(itemInterfaceName);
             }
           } else {
-            // 如果没有找到 schema 定义，使用原始名称
-            tsType = `${actualRefName}[]`;
-          }
-        } else if (prop.items.type === 'object' && prop.items.properties) {
-          // 数组中的对象，生成独立接口
-          const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
-          tsType = `${itemInterfaceName}[]`;
-
-          // 生成数组项接口定义
-          if (!context.generatedTypes.has(itemInterfaceName)) {
-            const itemInterface = generateNestedInterface(
-              prop.items,
-              definitions,
-              context,
-              itemInterfaceName,
-              schemaNameMap
-            );
-            context.complexTypes.set(itemInterfaceName, itemInterface);
-            context.generatedTypes.add(itemInterfaceName);
+            tsType = `${getTypeScriptType(prop.items, schemaNameMap, context, definitions, typePrefix)}[]`;
           }
         } else {
-          tsType = `${getTypeScriptType(prop.items, schemaNameMap, context, definitions, typePrefix)}[]`;
-        }
-      } else {
-        tsType = getTypeScriptType(prop, schemaNameMap, context, definitions, typePrefix);
+          tsType = getTypeScriptType(prop, schemaNameMap, context, definitions, typePrefix);
 
-        // 处理需要生成类型定义的情况
-        if (tsType.startsWith('__GENERATE_TYPE__')) {
-          const interfaceName = tsType.replace('__GENERATE_TYPE__', '');
-          tsType = interfaceName;
+          // 处理需要生成类型定义的情况
+          if (tsType.startsWith('__GENERATE_TYPE__')) {
+            const interfaceName = tsType.replace('__GENERATE_TYPE__', '');
+            tsType = interfaceName;
 
-          // 检查是否已经生成过这个类型
-          if (!context.generatedTypes.has(interfaceName)) {
-            // 从 interfaceName 中提取原始 schema 名称
-            const schemaName = interfaceName.replace(typePrefix, '');
+            // 检查是否已经生成过这个类型
+            if (!context.generatedTypes.has(interfaceName)) {
+              // 从 interfaceName 中提取原始 schema 名称
+              const schemaName = interfaceName.replace(typePrefix, '');
 
-            // 查找原始的中文schema名称
-            const originalSchemaName = Array.from(schemaNameMap?.entries() || []).find(
-              ([key, value]) => value === schemaName
-            )?.[0];
+              // 查找原始的中文schema名称
+              const originalSchemaName = Array.from(schemaNameMap?.entries() || []).find(
+                ([key, value]) => value === schemaName
+              )?.[0];
 
-            if (originalSchemaName && definitions?.[originalSchemaName]) {
-              const nestedInterface = generateNestedInterface(
-                definitions[originalSchemaName],
-                definitions,
-                context,
-                interfaceName,
-                schemaNameMap
-              );
-              context.complexTypes.set(interfaceName, nestedInterface);
-              context.generatedTypes.add(interfaceName);
+              if (originalSchemaName && definitions?.[originalSchemaName]) {
+                const nestedInterface = generateNestedInterface(
+                  definitions[originalSchemaName],
+                  definitions,
+                  context,
+                  interfaceName,
+                  schemaNameMap
+                );
+                context.complexTypes.set(interfaceName, nestedInterface);
+                context.generatedTypes.add(interfaceName);
+              }
             }
           }
         }
