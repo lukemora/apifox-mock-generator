@@ -27,11 +27,26 @@ export async function formatCode(content: string, filePath: string): Promise<str
     }
 
     // 使用 Prettier 的 resolveConfig 自动查找项目配置
-    // 支持 .prettierrc, .prettierrc.json, .prettierrc.js, prettier.config.js 等多种格式
-    const projectRoot = getProjectRoot();
-    const config = await prettier.resolveConfig(projectRoot);
+    // 传递文件路径而不是目录路径，让 Prettier 从文件位置向上查找配置
+    const config = await prettier.resolveConfig(filePath);
+
+    // 默认配置，确保格式化一致性
+    const defaultOptions: prettier.Options = {
+      semi: true,
+      singleQuote: true,
+      tabWidth: 2,
+      useTabs: false,
+      printWidth: 100,
+      trailingComma: 'none',
+      bracketSpacing: true,
+      bracketSameLine: false,
+      arrowParens: 'avoid',
+      endOfLine: 'lf',
+      quoteProps: 'preserve'
+    };
 
     const options: prettier.Options = {
+      ...defaultOptions,
       ...config,
       parser
     };

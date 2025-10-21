@@ -30,7 +30,7 @@ export function generateNamespaceContent(
   // 生成注释标记
   const commentTag = `${endpoint.path}[${endpoint.method}]`;
 
-  let content = `//[start]${commentTag}
+  let content = `// [start]${commentTag}
 export namespace ${context.namespaceName} {`;
 
   // 生成响应体类型
@@ -67,7 +67,7 @@ export namespace ${context.namespaceName} {`;
   }
 
   content += `\n}
-//[end]${commentTag}`;
+// [end]${commentTag}`;
 
   return content;
 }

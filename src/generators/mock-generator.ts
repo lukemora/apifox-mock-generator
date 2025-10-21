@@ -77,7 +77,7 @@ async function ensureFileArchitecture(filePath: string): Promise<void> {
     // 检查是否已有部分 import 语句，避免重复添加
     const hasMockImport = content.includes('import Mock from "mockjs"');
     const hasLodashImport = content.includes('import lodash from "lodash"');
-    const hasInsertFlag = content.includes('//[insert-flag]');
+  const hasInsertFlag = content.includes('// [insert-flag]') || content.includes('//[insert-flag]');
 
     let updatedContent = content;
 
@@ -93,7 +93,7 @@ async function ensureFileArchitecture(filePath: string): Promise<void> {
 
     // 如果没有 insert-flag，在文件末尾添加
     if (!hasInsertFlag) {
-      updatedContent = updatedContent.trim() + '\n\n//[insert-flag]\n';
+      updatedContent = updatedContent.trim() + '\n\n// [insert-flag]\n';
     }
 
     const { writeFile } = await import('fs/promises');

@@ -33,49 +33,55 @@ export function generateMockEndpointContent(endpoint: ApiEndpoint, definitions?:
   // 生成注释标记
   const commentTag = `${endpoint.path}[${method}]`;
 
-  const content = `//[start]${commentTag}
+  const content = `// [start]${commentTag}
 /**
  * @apiName ${endpoint.name}
  * @apiURI ${endpoint.path}
  * @apiRequestType ${method}
  */
-export const check_${namespaceName} = function () {
-\t//true 本地数据， false 远程服务器数据
+export const check${namespaceName} = function () {
+\t// true 本地数据， false 远程服务器数据
 \treturn true;
 };
 
 export function ${namespaceName}(query, body, ctx) {
     const options = { req: { query, method: ctx.req.method }, data: JSON.stringify(body) }
     
-    let apiMethod = lodash.get(options, 'req.method');
-    let originQuery = options.req.query;
-    let bodyParams = JSON.parse(options.data || '{}');
+    const apiMethod = lodash.get(options, 'req.method');
+    ${
+      mockParams
+        ? `const originQuery = options.req.query;
+    const bodyParams = JSON.parse(options.data || '{}');
     
     // ${endpoint.name}
     
     if (apiMethod === '${method}') {
+        const mockParams = ${mockParams};
+        // 合并query参数和body参数，body参数优先级更高
+        const apiParams = { ...originQuery, ...bodyParams };
+        
+        for(let i = 0, len = mockParams.length; i < len; i++) {`
+        : `// ${endpoint.name}
+    
+    if (apiMethod === '${method}') {`
+    }
         ${
           mockParams
             ? `
-        let mockParams = ${mockParams};
-        // 合并query参数和body参数，body参数优先级更高
-        let apiParams = { ...originQuery, ...bodyParams };
-        
-        for(let i = 0, len = mockParams.length; i < len; i++) {
-            let param =  mockParams[i];
-            if (param.paramIsRequired && !apiParams.hasOwnProperty(param.paramKey)) {
+            const param =  mockParams[i];
+            if (param.paramIsRequired && !Object.prototype.hasOwnProperty.call(apiParams, param.paramKey)) {
                 return {
                     code: 1,
-                    msg: '缺少必要参数: ' + param.paramKey
+                    msg: \`缺少必要参数: \${param.paramKey}\`
                 }
             }
             // 只对body参数进行类型校验，query参数跳过类型校验
-            if (apiParams.hasOwnProperty(param.paramKey) && bodyParams.hasOwnProperty(param.paramKey)) {
+            if (Object.prototype.hasOwnProperty.call(apiParams, param.paramKey) && Object.prototype.hasOwnProperty.call(bodyParams, param.paramKey)) {
                 // 如果参数来自body，进行类型校验
                 if (lodash[param.paramType] && !lodash[param.paramType](apiParams[param.paramKey])) {
                     return {
                         code: 1,
-                        msg: '参数类型错误: ' + param.paramKey
+                        msg: \`参数类型错误: \${param.paramKey}\`
                     }
                 }
             }
@@ -94,11 +100,11 @@ export function ${namespaceName}(query, body, ctx) {
         
 
     return {
-        "code": 1,
-    "msg": '请检查请求的method或者URI的query是否正确'
+        'code': 1,
+    'msg': '请检查请求的method或者URI的query是否正确'
   };
 }
-//[end]${commentTag}
+// [end]${commentTag}
 `;
 
   return content;
@@ -214,7 +220,7 @@ function generateMockTemplateForResponse(
             mockValue = 'randomCode';
           } else if (key === 'msg' && propSchema.type === 'string') {
             const apiInfo = interfaceInfo;
-            mockValue = `randomCode === 1 ? "接口调用失败:${apiInfo}" : "接口调用成功"`;
+            mockValue = `randomCode === 1 ? '接口调用失败:${apiInfo}' : '接口调用成功'`;
           }
         }
 
@@ -243,9 +249,9 @@ function generateMockTemplateForResponse(
         if (propSchema.type === 'array') {
           // 对于数组类型，使用 Mock.js 的长度控制语法
           // 注意：这需要在字符串模板中工作，而不是对象字面量
-          fieldKey = `"${key}|0-11"`;
+          fieldKey = `'${key}|0-11'`;
         } else {
-          fieldKey = `"${key}"`;
+          fieldKey = `'${key}'`;
         }
 
         objContent += `\n${indent}${fieldKey}: ${mockValue}${comma}${comment}`;
@@ -355,7 +361,7 @@ function generateMockValueForField(
   // 特殊处理 msg 字段，根据 code 值生成相应消息
   if (fieldName === 'msg' && schema.type === 'string') {
     const apiInfo = interfaceInfo || '接口';
-    return `Math.random() < 0.5 ? "接口调用失败:${apiInfo}" : "接口调用成功"`;
+    return `Math.random() < 0.5 ? '接口调用失败:${apiInfo}' : '接口调用成功'`;
   }
 
   // 使用 Apifox 的 mock 规则
@@ -369,11 +375,11 @@ function generateMockValueForField(
     case 'string':
       // 优先使用示例值
       if (schema.example !== undefined) {
-        return `"${schema.example}"`;
+        return `'${schema.example}'`;
       }
       // 使用枚举值
       if (schema.enum && schema.enum.length > 0) {
-        const enumValues = schema.enum.map((v: any) => `"${v}"`).join(', ');
+        const enumValues = schema.enum.map((v: any) => `'${v}'`).join(', ');
         return wrapMockTemplate(`@pick([${enumValues}])`);
       }
       return wrapMockTemplate('@cword(3, 8)');
@@ -425,7 +431,7 @@ function generateMockValueForField(
         }
       }
       // 最后的回退策略：对于字符串类型返回空字符串，其他类型返回空对象
-      return schema?.type === 'string' ? '""' : '{}';
+      return schema?.type === 'string' ? "''" : '{}';
   }
 }
 

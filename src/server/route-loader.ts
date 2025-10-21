@@ -91,8 +91,8 @@ export async function loadMockRoutes(
           path: routeInfo.path,
           method: routeInfo.method,
           response: async (req: express.Request) => {
-            // 检查是否有 check_ 函数
-            const checkFunctionName = `check_${methodName}`;
+            // 检查是否有 check 函数
+            const checkFunctionName = `check${methodName}`;
             const checkFunction = mockModule[checkFunctionName];
 
             if (checkFunction && typeof checkFunction === 'function') {
@@ -102,9 +102,9 @@ export async function loadMockRoutes(
               logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
               return handlerFunction(req.query, req.body, { req });
             } else {
-              // 没有 check_ 函数，直接使用本地 Mock 数据
+              // 没有 check 函数，直接使用本地 Mock 数据
               logger.debug(
-                `未找到 check_ 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`
+                `未找到 check 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`
               );
               return handlerFunction(req.query, req.body, { req });
             }
@@ -180,10 +180,10 @@ export async function loadRouteFromFile(
               return handlerFunction(req.query, req.body, { req });
             }
 
-            // 检查 check_ 函数
+            // 检查 check 函数
             const methodName =
               routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
-            const checkFunctionName = `check_${methodName}`;
+            const checkFunctionName = `check${methodName}`;
             const checkFunction = latestModule[checkFunctionName];
 
             if (checkFunction && typeof checkFunction === 'function') {
@@ -208,9 +208,9 @@ export async function loadRouteFromFile(
                 }
               }
             } else {
-              // 没有 check_ 函数，直接使用本地 Mock 数据
+              // 没有 check 函数，直接使用本地 Mock 数据
               logger.debug(
-                `热重载 - 未找到 check_ 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`
+                `热重载 - 未找到 check 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`
               );
               return latestHandler(req.query, req.body, { req });
             }

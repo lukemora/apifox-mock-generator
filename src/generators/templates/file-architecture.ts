@@ -3,10 +3,10 @@
  * 包含必要的 import 语句和基础设置
  */
 export function generateFileArchitecture(): string {
-  return `import Mock from "mockjs";
-import lodash from "lodash";
+  return `import Mock from 'mockjs';
+import lodash from 'lodash';
 
-//[insert-flag]
+// [insert-flag]
 `;
 }
 
@@ -14,12 +14,15 @@ import lodash from "lodash";
  * 检查文件是否已有基础架构
  */
 export function hasFileArchitecture(content: string): boolean {
-  // 检查是否包含必要的 import 语句
-  const hasMockImport = content.includes('import Mock from "mockjs"');
-  const hasLodashImport = content.includes('import lodash from "lodash"');
+  // 检查是否包含必要的 import 语句（支持单引号和双引号）
+  const hasMockImport =
+    content.includes('import Mock from "mockjs"') || content.includes("import Mock from 'mockjs'");
+  const hasLodashImport =
+    content.includes('import lodash from "lodash"') ||
+    content.includes("import lodash from 'lodash'");
 
   // 检查是否有 insert-flag 标记（表示文件已经初始化）
-  const hasInsertFlag = content.includes('//[insert-flag]');
+  const hasInsertFlag = content.includes('// [insert-flag]') || content.includes('//[insert-flag]');
 
   return hasMockImport && hasLodashImport && hasInsertFlag;
 }
