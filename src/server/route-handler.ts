@@ -53,7 +53,7 @@ export class RouteHandler {
     try {
       const proxyData = await this.remoteProxy.proxyRequest(req);
       res.json(proxyData);
-      logger.info(`代理请求成功: ${req.method} ${req.path}`);
+      logger.success(`${req.method} ${req.path} -> 200 (远程服务器)`);
       return true;
     } catch (error) {
       logger.error(`代理请求失败: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -111,7 +111,16 @@ export class RouteHandler {
 
       // 返回 Mock 数据
       res.status(route.status || 200).json(responseData);
-      logger.success(`${route.method} ${route.path} -> ${route.status || 200}`);
+
+      // 判断数据来源
+      const dataSource =
+        responseData && typeof responseData === 'object' && responseData.code !== undefined
+          ? responseData.code === 0
+            ? '本地Mock'
+            : '远程服务器'
+          : '本地Mock';
+
+      logger.success(`${route.method} ${route.path} -> ${route.status || 200} (${dataSource})`);
       return true;
     } catch (error) {
       logger.error(

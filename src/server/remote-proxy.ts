@@ -20,7 +20,7 @@ export class RemoteProxy {
     const queryString = new URLSearchParams(req.query).toString();
     const fullUrl = queryString ? `${remoteUrl}?${queryString}` : remoteUrl;
 
-    logger.debug(`代理请求到: ${fullUrl}`);
+    logger.info(`🌐 代理请求到: ${fullUrl}`);
 
     try {
       const response = await fetch(fullUrl, {
@@ -37,9 +37,10 @@ export class RemoteProxy {
       }
 
       const data = await response.json();
+      logger.info(`✅ 远程服务器响应成功: ${response.status}`);
       return data;
     } catch (error) {
-      logger.error(`代理请求失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      logger.error(`❌ 代理请求失败: ${error instanceof Error ? error.message : '未知错误'}`);
       throw error;
     }
   }

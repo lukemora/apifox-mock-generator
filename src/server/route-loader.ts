@@ -87,20 +87,38 @@ export async function loadMockRoutes(
           continue;
         }
 
+        // 获取实际的函数名（如果存在）
+        const actualFunctionName = handlerFunction.name || methodName;
+
         routes.push({
           path: routeInfo.path,
           method: routeInfo.method,
           response: async (req: express.Request) => {
-            // 检查是否有 check 函数
-            const checkFunctionName = `check${methodName}`;
+            // 检查是否有 check 函数，使用实际的函数名
+            const checkFunctionName = `check${actualFunctionName}`;
             const checkFunction = mockModule[checkFunctionName];
 
             if (checkFunction && typeof checkFunction === 'function') {
               const useLocalMock = checkFunction();
 
-              // 使用本地 Mock 数据
-              logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
-              return handlerFunction(req.query, req.body, { req });
+              if (useLocalMock) {
+                // 使用本地 Mock 数据
+                logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
+                return handlerFunction(req.query, req.body, { req });
+              } else {
+                // 使用远程服务器数据
+                const { RemoteProxy } = await import('./remote-proxy.js');
+                const remoteProxy = new RemoteProxy(mockConfig);
+                if (remoteProxy.isRemoteServerConfigured()) {
+                  logger.debug(`使用远程服务器数据: ${routeInfo.method} ${routeInfo.path}`);
+                  return remoteProxy.proxyRequest(req);
+                } else {
+                  logger.warn(
+                    `远程服务器未配置，回退到本地 Mock: ${routeInfo.method} ${routeInfo.path}`
+                  );
+                  return handlerFunction(req.query, req.body, { req });
+                }
+              }
             } else {
               // 没有 check 函数，直接使用本地 Mock 数据
               logger.debug(
@@ -153,13 +171,20 @@ export async function loadRouteFromFile(
     const mockModule = await import(fileUrl + cacheBuster);
 
     // 获取导出的函数
+    const methodName =
+      routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
     const handlerFunction =
+      mockModule[methodName] ||
+      mockModule[`${methodName}Role`] || // 尝试 PostRole, GetRole 等
       mockModule.default ||
       Object.values(mockModule).find(exp => typeof exp === 'function' && exp.name);
 
     if (!handlerFunction || typeof handlerFunction !== 'function') {
       return null;
     }
+
+    // 获取实际的函数名（如果存在）
+    const actualFunctionName = handlerFunction.name || methodName;
 
     const key = `${routeInfo.method} ${routeInfo.path}`;
     const route: MockRoute = {
@@ -172,7 +197,12 @@ export async function loadRouteFromFile(
             const latestVersion = moduleCache.get(filePath) || version;
             const cacheBuster = `?v=${latestVersion}&t=${Date.now()}&r=${Math.random()}`;
             const latestModule = await import(fileUrl + cacheBuster);
+            // 使用与初始加载相同的逻辑来查找处理函数
+            const methodName =
+              routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
             const latestHandler =
+              latestModule[methodName] ||
+              latestModule[`${methodName}Role`] || // 尝试 PostRole, GetRole 等
               latestModule.default ||
               Object.values(latestModule).find(exp => typeof exp === 'function' && exp.name);
 
@@ -180,10 +210,9 @@ export async function loadRouteFromFile(
               return handlerFunction(req.query, req.body, { req });
             }
 
-            // 检查 check 函数
-            const methodName =
-              routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
-            const checkFunctionName = `check${methodName}`;
+            // 检查 check 函数，使用实际的函数名
+            const actualFunctionName = latestHandler.name || methodName;
+            const checkFunctionName = `check${actualFunctionName}`;
             const checkFunction = latestModule[checkFunctionName];
 
             if (checkFunction && typeof checkFunction === 'function') {
