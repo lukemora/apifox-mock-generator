@@ -10,7 +10,7 @@ export default {
   // 本地服务的端口
   port: 1000,
   // 默认代理至系统测试环境, 请配置本地host
-  target: 'http://xxx.xxxx.com.cn',
+  target: 'http://36.133.230.52:9101',
   // 开始remote参数, 通过url中remote=xxx来代理多个后端地址, 需要mock直接在url中设置remote=mock即可
   remoteTarget: true,
   // 处理映射路径
