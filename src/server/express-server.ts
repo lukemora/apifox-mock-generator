@@ -55,7 +55,7 @@ export function setupMockServer(
     res.status(500).json({
       code: 500,
       message: 'Internal server error',
-      data: null
+      error: err.message
     });
   });
 

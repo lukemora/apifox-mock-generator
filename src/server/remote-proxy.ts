@@ -1,5 +1,6 @@
 import type { MockConfig } from '../core/mock-config-loader.js';
 import { logger } from '../utils/logger.js';
+import axios from 'axios';
 
 /**
  * 远程服务器代理
@@ -23,23 +24,26 @@ export class RemoteProxy {
     logger.info(`🌐 代理请求到: ${fullUrl}`);
 
     try {
-      const response = await fetch(fullUrl, {
+      const response = await axios({
         method: req.method,
+        url: fullUrl,
         headers: {
           'Content-Type': 'application/json',
           ...req.headers
         },
-        body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined
+        data: req.method !== 'GET' ? req.body : undefined
       });
 
-      if (!response.ok) {
-        throw new Error(`远程服务器响应错误: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      logger.info(`📊 远程服务器响应: ${response.status} ${response.statusText}`);
       logger.info(`✅ 远程服务器响应成功: ${response.status}`);
-      return data;
+      return response.data;
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        logger.error(`❌ 远程服务器错误响应: ${JSON.stringify(error.response.data)}`);
+        throw new Error(
+          `远程服务器响应错误: ${error.response.status} ${error.response.statusText}`
+        );
+      }
       logger.error(`❌ 代理请求失败: ${error instanceof Error ? error.message : '未知错误'}`);
       throw error;
     }

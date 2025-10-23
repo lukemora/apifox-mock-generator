@@ -3,9 +3,14 @@ import * as path from 'path';
 import { logger } from './logger.js';
 
 /**
- * 保存 OpenAPI 数据到日志文件
+ * 保存 OpenAPI 数据到日志文件（仅在开发环境）
  */
 export function saveOpenAPIData(openapiData: any, projectId: string): void {
+  // 只在开发环境中生成日志文件
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+
   try {
     // 创建日志目录
     const logDir = path.join(process.cwd(), 'logs');
@@ -28,9 +33,14 @@ export function saveOpenAPIData(openapiData: any, projectId: string): void {
 }
 
 /**
- * 保存调试数据到日志文件
+ * 保存调试数据到日志文件（仅在开发环境）
  */
 export function saveDebugData(data: any, filename: string): void {
+  // 只在开发环境中生成日志文件
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+
   try {
     // 创建日志目录
     const logDir = path.join(process.cwd(), 'logs');

@@ -32,7 +32,7 @@ export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<any>
       `✓ 从 Apifox 拉取成功（${Object.keys(response.data.paths || {}).length} 个接口）`
     );
 
-    // 保存 OpenAPI 数据到日志文件
+    // 保存 OpenAPI 数据到日志文件（仅在开发环境）
     saveOpenAPIData(response.data, config.projectId);
 
     return response.data;
