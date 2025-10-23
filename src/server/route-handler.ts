@@ -52,12 +52,34 @@ export class RouteHandler {
   private async handleProxyRequest(req: any, res: any): Promise<boolean> {
     try {
       const proxyData = await this.remoteProxy.proxyRequest(req);
-      res.json(proxyData);
-      logger.success(`${req.method} ${req.path} -> 200 (远程服务器)`);
+
+      // 检查响应是否包含错误信息
+      if (proxyData && typeof proxyData === 'object' && proxyData.code && proxyData.code !== 0) {
+        // 远程服务器返回了错误，直接返回错误响应
+        res.status(proxyData.code >= 400 ? proxyData.code : 400).json(proxyData);
+        logger.error(
+          `${req.method} ${req.path} -> ${proxyData.code} (远程服务器响应错误:${proxyData.code})`
+        );
+      } else {
+        // 正常响应
+        res.json(proxyData);
+        logger.success(`${req.method} ${req.path} -> 200 (远程服务器)`);
+      }
       return true;
     } catch (error) {
-      logger.error(`代理请求失败: ${error instanceof Error ? error.message : '未知错误'}`);
-      return false;
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      logger.error(`代理请求失败: ${errorMessage}`);
+      res.status(500).json({
+        code: 500,
+        message: '代理服务器错误',
+        error: `代理请求失败: ${errorMessage}`,
+        details: {
+          target: this.config.target,
+          path: req.path,
+          method: req.method
+        }
+      });
+      return true;
     }
   }
 

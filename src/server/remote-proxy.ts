@@ -40,12 +40,16 @@ export class RemoteProxy {
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         logger.error(`❌ 远程服务器错误响应: ${JSON.stringify(error.response.data)}`);
-        throw new Error(
-          `远程服务器响应错误: ${error.response.status} ${error.response.statusText}`
-        );
+        // 直接返回远程服务器的错误响应，保持原始错误信息
+        return error.response.data;
       }
-      logger.error(`❌ 代理请求失败: ${error instanceof Error ? error.message : '未知错误'}`);
-      throw error;
+
+      // 网络错误或其他异常
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      logger.error(`❌ 代理请求失败: ${errorMessage}`);
+
+      // 返回更详细的错误信息
+      throw new Error(`代理请求失败: ${errorMessage} (目标: ${fullUrl})`);
     }
   }
 
