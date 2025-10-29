@@ -9,7 +9,7 @@ const STATUS_MAPPING: Record<string, string> = {
   开发中: 'developing',
   已完成: 'completed',
   已废弃: 'deprecated',
-  待定: 'pending',
+  待确定: 'pending',
   测试中: 'testing',
   已发布: 'published'
 };
@@ -111,9 +111,27 @@ export function filterEndpoints(endpoints: ApiEndpoint[], filter?: ApiFilter): A
       }
     }
 
-    // 8. 检查 folderPaths（基于文件夹路径过滤）
+    // 8. 检查 folderPaths（基于文件夹路径过滤，支持前缀匹配）
     if (filter.scope?.folderPaths && filter.scope.folderPaths.length > 0) {
-      if (!endpoint.folderPath || !filter.scope.folderPaths.includes(endpoint.folderPath)) {
+      if (!endpoint.folderPath) {
+        logger.debug(`[Filter] 接口缺少文件夹路径，已排除: ${endpoint.path}`);
+        return false;
+      }
+
+      // 检查是否匹配任何一个文件夹路径（支持前缀匹配）
+      const matched = filter.scope.folderPaths.some(folderPath => {
+        // 精确匹配
+        if (endpoint.folderPath === folderPath) {
+          return true;
+        }
+        // 前缀匹配（子目录）
+        if (endpoint.folderPath && endpoint.folderPath.startsWith(folderPath + '/')) {
+          return true;
+        }
+        return false;
+      });
+
+      if (!matched) {
         logger.debug(
           `[Filter] 文件夹路径不匹配，已排除: ${endpoint.folderPath} (期望: ${filter.scope.folderPaths.join(', ')})`
         );
