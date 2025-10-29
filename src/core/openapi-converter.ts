@@ -28,7 +28,8 @@ export function convertOpenAPIToEndpoints(openapi: any): ApiEndpoint[] {
               in: p.in,
               required: p.required || false,
               type: p.schema?.type || 'string',
-              description: p.description
+              description: p.description,
+              schema: p.schema
             };
             return param;
           }),

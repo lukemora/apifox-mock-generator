@@ -93,6 +93,8 @@ export interface ApiParameter {
   type: string;
   /** 参数描述 */
   description?: string;
+  /** 参数 schema 定义（包含枚举等信息） */
+  schema?: any;
 }
 
 // Mock 生成器配置类型

@@ -180,7 +180,18 @@ function generateRequestTypes(
     pathParams.forEach(param => {
       const optional = param.required ? '' : '?';
       const description = param.description ? `\n    /** ${param.description} */` : '';
-      content += `${description}\n    ${param.name}${optional}: ${mapSchemaTypeToTS(param.type)};`;
+
+      // 处理参数类型，优先使用 schema 中的类型定义
+      let paramType: string;
+      if (param.schema) {
+        // 如果有 schema 定义，使用 getTypeScriptType 处理（支持枚举）
+        paramType = getTypeScriptType(param.schema, schemaNameMap, context, schemas, 'PathParams');
+      } else {
+        // 否则使用基础类型映射
+        paramType = mapSchemaTypeToTS(param.type);
+      }
+
+      content += `${description}\n    ${param.name}${optional}: ${paramType};`;
     });
     content += `\n  }`;
   }
@@ -193,7 +204,34 @@ function generateRequestTypes(
     queryParams.forEach(param => {
       const optional = param.required ? '' : '?';
       const description = param.description ? `\n    /** ${param.description} */` : '';
-      content += `${description}\n    ${param.name}${optional}: ${mapSchemaTypeToTS(param.type)};`;
+
+      // 处理参数类型，优先使用 schema 中的类型定义
+      let paramType: string;
+      if (param.schema) {
+        // 如果有枚举定义，生成独立枚举类型
+        if (param.schema.enum && param.schema.enum.length > 0) {
+          const enumTypeName = `Query${param.name.charAt(0).toUpperCase() + param.name.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}`;
+
+          // 生成枚举类型定义
+          if (!context.generatedTypes.has(enumTypeName)) {
+            const enumValues = param.schema.enum
+              .map((v: any) => (typeof v === 'string' ? `'${v}'` : v))
+              .join(' | ');
+            context.complexTypes.set(enumTypeName, `export type ${enumTypeName} = ${enumValues};`);
+            context.generatedTypes.add(enumTypeName);
+          }
+
+          paramType = enumTypeName;
+        } else {
+          // 否则使用 getTypeScriptType 处理
+          paramType = getTypeScriptType(param.schema, schemaNameMap, context, schemas, 'Query');
+        }
+      } else {
+        // 否则使用基础类型映射
+        paramType = mapSchemaTypeToTS(param.type);
+      }
+
+      content += `${description}\n    ${param.name}${optional}: ${paramType};`;
     });
     content += `\n  }`;
   }
