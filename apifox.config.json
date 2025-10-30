@@ -3,6 +3,7 @@
   "token": "APS-LNZPjGpUzSJMDRQrDgq11rdDWp1Ajrut",
   "mockDir": "./mock",
   "typesDir": "./src/types/mock",
+  "generate": "all",
   "apiFilter": {
     "scope": {
       "type": "ALL",

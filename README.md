@@ -39,9 +39,9 @@ pnpm add apifox-mock-generator -D -W
   "token": "APS-XQrLSqLE4q0FOb0bGhaqYvTxSUQQFPeO",
   "mockDir": "./mock",
   "typesDir": "./src/types/mock",
+  "generate": "all",
   "apiFilter": {
     "scope": {
-      "type": "ALL",
       "excludedByTags": ["设计中", "已废弃"],
       "folderPaths": []
     },
@@ -150,6 +150,10 @@ const login = async (
 - `branchId`: 项目分支名称（number类型，有key则必须有值）
 - `mockDir`: Mock 文件生成目录（默认：`./mock`）
 - `typesDir`: TypeScript 类型文件生成目录（默认：`./src/types/mock`）
+- `generate`: 生成范围（可选，默认 `all`）。可选值：
+  - `all` 同时生成 Mock 与 TS 类型
+  - `mock` 只生成 Mock 文件
+  - `types` 只生成 TS 类型
 - `apiFilter`: API 筛选配置（可选）
 
 #### branchId 获取方法
@@ -158,27 +162,22 @@ const login = async (
 
 #### API 筛选配置
 
-通过 `apiFilter` 配置项，您可以精确控制需要导出和生成的 API 接口。支持**服务端过滤**（Apifox API）和**客户端过滤**（生成时）。
+通过 `apiFilter` 配置项，您可以精确控制需要导出和生成的 API 接口。
 
-#### 服务端过滤（Apifox API）
+**`scope` 配置** - 导出范围配置：
 
-**`scope` 配置** - 控制从 Apifox 导出哪些接口：
+| 参数             | 类型       | 说明                                                             |
+| ---------------- | ---------- | ---------------------------------------------------------------- |
+| `includedByTags` | `string[]` | 包含的标签列表                                                   |
+| `excludedByTags` | `string[]` | 排除的接口状态（支持中文：`设计中`、`已废弃`、`待确定` 等）      |
+| `folderPaths`    | `string[]` | 文件夹路径列表（支持多个中文文件夹名称匹配，支持前缀匹配子目录） |
 
-| 参数             | 类型                         | 说明                                                        |
-| ---------------- | ---------------------------- | ----------------------------------------------------------- |
-| `type`           | `'ALL' \| 'FOLDER' \| 'TAG'` | 导出类型：全部/按文件夹/按标签                              |
-| `includedByTags` | `string[]`                   | 包含的标签                                                  |
-| `excludedByTags` | `string[]`                   | 排除的接口状态（支持中文：`设计中`、`已废弃`、`待确定` 等） |
-| `folderPaths`    | `string[]`                   | 文件夹路径列表（支持多个中文文件夹名称匹配）                |
-
-#### 客户端过滤（生成时）
-
-在生成 Mock 和类型文件时进行二次过滤：
+**其他过滤配置**：
 
 | 参数             | 类型       | 说明                                      |
 | ---------------- | ---------- | ----------------------------------------- |
 | `includePaths`   | `string[]` | 只包含这些路径（支持 `*` 和 `**` 通配符） |
-| `excludePaths`   | `string[]` | 排除这些路径                              |
+| `excludePaths`   | `string[]` | 排除这些路径（支持 `*` 和 `**` 通配符）   |
 | `includeMethods` | `string[]` | 只包含这些 HTTP 方法                      |
 | `excludeMethods` | `string[]` | 排除这些 HTTP 方法                        |
 

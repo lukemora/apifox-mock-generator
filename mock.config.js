@@ -13,23 +13,15 @@ export default {
   target: 'http://36.133.230.52:9101',
   // 开始remote参数, 通过url中remote=xxx来代理多个后端地址, 需要mock直接在url中设置remote=mock即可
   remoteTarget: true,
-  // 处理映射路径
-  handleMapPath(req) {
-    const url = req.req.url.slice(1);
-    const splitUrl = url.split('/');
-    const fileName = splitUrl[splitUrl.length - 1].split('?')[0];
-    const relativePath = splitUrl.splice(0, splitUrl.length - 1).join('/');
-    if (!fileName || !relativePath) {
-      console.log('无映射路径文件名fileName值: ', fileName);
-      console.log('无映射路径文件路径relativePath值: ', relativePath || '空映射路径');
-      return {
-        fileName: fileName || 'fileName',
-        relativePath: relativePath || './'
-      };
-    }
-    return {
-      relativePath,
-      fileName
-    };
-  }
+  // 按接口粒度控制 Mock/Proxy（可选）
+  mockRoutes: [
+    // 示例：这些接口强制使用本地 Mock
+    // '/auth/login',
+    // 'GET /user/info'
+  ],
+  proxyRoutes: [
+    // 示例：这些接口强制直连后端
+    // 'POST /payment/pay',
+    // '/config/remote'
+  ]
 };

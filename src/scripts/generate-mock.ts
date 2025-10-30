@@ -11,7 +11,7 @@ import { generateTypeFiles } from '../generators/type-generator.js';
  */
 async function main() {
   try {
-    logger.title('🚀 开始生成 Mock 数据和 TypeScript 类型...');
+    logger.title('🚀 开始生成 Mock/类型文件...');
 
     const config = await loadConfig();
 
@@ -38,11 +38,21 @@ async function main() {
       return;
     }
 
-    // 生成 Mock 文件
-    await generateMockFiles(config, endpoints, openapi.components?.schemas);
+    const mode = config.generate ?? 'all';
 
-    // 生成类型文件
-    await generateTypeFiles(config, openapi, endpoints);
+    if (mode === 'all' || mode === 'mock') {
+      await generateMockFiles(config, endpoints, openapi.components?.schemas);
+      logger.success('✓ Mock 文件生成完成');
+    } else {
+      logger.info('跳过 Mock 文件生成');
+    }
+
+    if (mode === 'all' || mode === 'types') {
+      await generateTypeFiles(config, openapi, endpoints);
+      logger.success('✓ 类型文件生成完成');
+    } else {
+      logger.info('跳过 TypeScript 类型文件生成');
+    }
 
     logger.success('\n✨ 所有文件生成完成！');
   } catch (error) {

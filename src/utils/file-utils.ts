@@ -1,13 +1,26 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { logger } from './logger.js';
 
 /**
- * 保存 OpenAPI 数据到日志文件（仅在开发环境）
+ * 检查是否作为 npm 依赖被使用
+ * 如果在 node_modules 中运行，说明是作为依赖使用的
+ */
+function isRunningAsNpmDependency(): boolean {
+  const currentPath = fileURLToPath(import.meta.url);
+  return currentPath.includes('node_modules');
+}
+
+/**
+ * 保存 OpenAPI 数据到日志文件
+ * 只在本地开发环境（非 npm 依赖模式）下生成
+ * @param openapiData OpenAPI 数据
+ * @param projectId 项目 ID
  */
 export function saveOpenAPIData(openapiData: any, projectId: string): void {
-  // 只在开发环境中生成日志文件
-  if (process.env.NODE_ENV === 'production') {
+  // 如果作为 npm 依赖使用，不生成日志文件
+  if (isRunningAsNpmDependency()) {
     return;
   }
 
@@ -33,11 +46,14 @@ export function saveOpenAPIData(openapiData: any, projectId: string): void {
 }
 
 /**
- * 保存调试数据到日志文件（仅在开发环境）
+ * 保存调试数据到日志文件
+ * 只在本地开发环境（非 npm 依赖模式）下生成
+ * @param data 调试数据
+ * @param filename 文件名
  */
 export function saveDebugData(data: any, filename: string): void {
-  // 只在开发环境中生成日志文件
-  if (process.env.NODE_ENV === 'production') {
+  // 如果作为 npm 依赖使用，不生成日志文件
+  if (isRunningAsNpmDependency()) {
     return;
   }
 

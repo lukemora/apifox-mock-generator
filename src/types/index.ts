@@ -10,6 +10,8 @@ export interface ApifoxConfig {
   typesDir: string;
   /** Mock 服务器端口 */
   mockPort: number;
+  /** 生成范围：all(默认) | mock | types */
+  generate?: 'all' | 'mock' | 'types';
   /** API 筛选配置（可选） */
   apiFilter?: ApiFilter;
   /** 项目分支 ID（可选） */
