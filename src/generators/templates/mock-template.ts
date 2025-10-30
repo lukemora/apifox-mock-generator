@@ -86,10 +86,6 @@ export function generateMockEndpointContent(endpoint: ApiEndpoint, definitions?:
  * @apiURI ${endpoint.path}
  * @apiRequestType ${method}
  */
-export const check${namespaceName} = function () {
-\t// true 本地数据， false 远程服务器数据
-\treturn true;
-};
 
 export function ${namespaceName}(query, body, ctx) {
     const options = { req: { query, method: ctx.req.method }, data: JSON.stringify(body) }

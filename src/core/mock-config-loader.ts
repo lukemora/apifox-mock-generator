@@ -21,8 +21,12 @@ export interface MockConfig {
   // 远程目标支持
   remoteTarget: boolean;
 
-  // 路径映射处理函数
-  handleMapPath: (req: any) => { relativePath: string; fileName: string };
+  // 可选：按路由粒度控制模式（无需在 mock 文件里写 check 函数）
+  // 优先级：URL 参数 > mockRoutes/proxyRoutes > model
+  /** 需要强制使用 Mock 的路由，匹配 path 或 "METHOD path"，如：'/auth/login' 或 'POST /auth/login' */
+  mockRoutes?: string[];
+  /** 需要强制使用 Proxy 的路由，匹配 path 或 "METHOD path"，如：'/user/info' 或 'GET /user/info' */
+  proxyRoutes?: string[];
 }
 
 /**

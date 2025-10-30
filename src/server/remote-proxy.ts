@@ -16,7 +16,7 @@ export class RemoteProxy {
    * 代理请求到远程服务器
    */
   async proxyRequest(req: any): Promise<any> {
-    const target = this.config.target;
+    const target = req.__overrideTarget || this.config.target;
     const remoteUrl = `${target.replace(/\/$/, '')}${req.path}`;
     const queryString = new URLSearchParams(req.query).toString();
     const fullUrl = queryString ? `${remoteUrl}?${queryString}` : remoteUrl;

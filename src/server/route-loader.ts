@@ -94,38 +94,9 @@ export async function loadMockRoutes(
           path: routeInfo.path,
           method: routeInfo.method,
           response: async (req: express.Request) => {
-            // 检查是否有 check 函数，使用实际的函数名
-            const checkFunctionName = `check${actualFunctionName}`;
-            const checkFunction = mockModule[checkFunctionName];
-
-            if (checkFunction && typeof checkFunction === 'function') {
-              const useLocalMock = checkFunction();
-
-              if (useLocalMock) {
-                // 使用本地 Mock 数据
-                logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
-                return handlerFunction(req.query, req.body, { req });
-              } else {
-                // 使用远程服务器数据
-                const { RemoteProxy } = await import('./remote-proxy.js');
-                const remoteProxy = new RemoteProxy(mockConfig);
-                if (remoteProxy.isRemoteServerConfigured()) {
-                  logger.debug(`使用远程服务器数据: ${routeInfo.method} ${routeInfo.path}`);
-                  return remoteProxy.proxyRequest(req);
-                } else {
-                  logger.warn(
-                    `远程服务器未配置，回退到本地 Mock: ${routeInfo.method} ${routeInfo.path}`
-                  );
-                  return handlerFunction(req.query, req.body, { req });
-                }
-              }
-            } else {
-              // 没有 check 函数，直接使用本地 Mock 数据
-              logger.debug(
-                `未找到 check 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`
-              );
-              return handlerFunction(req.query, req.body, { req });
-            }
+            // 直接使用本地 Mock 数据
+            logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
+            return handlerFunction(req.query, req.body, { req });
           }
         });
 
@@ -210,39 +181,9 @@ export async function loadRouteFromFile(
               return handlerFunction(req.query, req.body, { req });
             }
 
-            // 检查 check 函数，使用实际的函数名
-            const actualFunctionName = latestHandler.name || methodName;
-            const checkFunctionName = `check${actualFunctionName}`;
-            const checkFunction = latestModule[checkFunctionName];
-
-            if (checkFunction && typeof checkFunction === 'function') {
-              const useLocalMock = checkFunction();
-
-              if (useLocalMock) {
-                // 使用本地 Mock 数据
-                logger.debug(`热重载 - 使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
-                return latestHandler(req.query, req.body, { req });
-              } else {
-                // 使用远程服务器数据
-                if (remoteProxy.isRemoteServerConfigured()) {
-                  logger.debug(
-                    `热重载 - 使用远程服务器数据: ${routeInfo.method} ${routeInfo.path}`
-                  );
-                  return remoteProxy.proxyRequest(req);
-                } else {
-                  logger.warn(
-                    `热重载 - 远程服务器未配置，回退到本地 Mock: ${routeInfo.method} ${routeInfo.path}`
-                  );
-                  return latestHandler(req.query, req.body, { req });
-                }
-              }
-            } else {
-              // 没有 check 函数，直接使用本地 Mock 数据
-              logger.debug(
-                `热重载 - 未找到 check 函数，使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`
-              );
-              return latestHandler(req.query, req.body, { req });
-            }
+            // 直接使用本地 Mock 数据
+            logger.debug(`热重载 - 使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
+            return latestHandler(req.query, req.body, { req });
           } catch (err) {
             // 失败时使用原始函数
             logger.error(

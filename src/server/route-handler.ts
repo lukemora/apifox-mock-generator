@@ -24,22 +24,42 @@ export class RouteHandler {
    */
   async handleRequest(req: any, res: any): Promise<boolean> {
     try {
-      // 检查 URL 参数中的模式覆盖
-      const urlMode = req.query._mock || req.query._proxy;
-      const effectiveMode =
-        urlMode === '_mock' ? 'mock' : urlMode === '_proxy' ? 'proxy' : this.config.model;
-
-      // 检查 remote 参数
-      if (this.config.remoteTarget && req.query.remote === 'mock') {
-        return await this.handleMockRequest(req, res);
+      // 1) remote 参数：从页面 Referer 中解析 ?remote
+      let remoteOverride: { mode?: 'mock' | 'proxy'; target?: string } | undefined;
+      if (this.config.remoteTarget) {
+        const referer: string | undefined = req.headers?.referer || req.headers?.referrer;
+        if (referer) {
+          try {
+            const u = new URL(referer);
+            const remoteVal = u.searchParams.get('remote');
+            if (remoteVal) {
+              const val = remoteVal.trim();
+              if (val.toLowerCase() === 'mock') {
+                remoteOverride = { mode: 'mock' };
+              } else if (/^https?:\/\//i.test(val)) {
+                remoteOverride = { mode: 'proxy', target: val };
+              }
+            }
+          } catch {}
+        }
       }
 
-      // 根据模式处理请求
-      if (effectiveMode === 'proxy') {
+      // 2) mockRoutes/proxyRoutes（按接口粒度）
+      const ruleMode = this.pickModeByRoutes(req.method, req.path);
+
+      // 3) 计算最终模式：remote > mockRoutes/proxyRoutes > config.model
+      const finalMode: 'mock' | 'proxy' =
+        (remoteOverride?.mode as any) || (ruleMode as any) || this.config.model;
+
+      // 5) 处理
+      if (finalMode === 'proxy') {
+        // 将覆盖的 target 放到 req 上, 供 RemoteProxy 使用
+        if (remoteOverride?.target) {
+          req.__overrideTarget = remoteOverride.target;
+        }
         return await this.handleProxyRequest(req, res);
-      } else {
-        return await this.handleMockRequest(req, res);
       }
+      return await this.handleMockRequest(req, res);
     } catch (error) {
       logger.error(`请求处理失败: ${error instanceof Error ? error.message : '未知错误'}`);
       return false;
@@ -95,6 +115,22 @@ export class RouteHandler {
     }
 
     return await this.executeMockRoute(route, req, res);
+  }
+
+  /**
+   * 路由匹配：精确匹配 path 或 "METHOD path"
+   */
+  private pickModeByRoutes(method: string, path: string): 'mock' | 'proxy' | undefined {
+    const candidateKeys = [path, `${method.toUpperCase()} ${path}`];
+
+    const match = (routes?: string[]): boolean => {
+      if (!routes || routes.length === 0) return false;
+      return candidateKeys.some(key => routes.includes(key));
+    };
+
+    if (match(this.config.proxyRoutes)) return 'proxy';
+    if (match(this.config.mockRoutes)) return 'mock';
+    return undefined;
   }
 
   /**
