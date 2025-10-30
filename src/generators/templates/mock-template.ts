@@ -1,5 +1,54 @@
 import type { ApiEndpoint } from '../../types/index.js';
 import { mapTypeToLodashCheck } from '../../utils/type-mapping.js';
+import { MockMappingsLoader } from '../../config/mock-mappings-loader.js';
+
+/**
+ * 检查字符串是否包含中文字符
+ */
+function containsChinese(str: string): boolean {
+  return /[\u4e00-\u9fff]/.test(str);
+}
+
+/**
+ * 生成唯一的资源名称，避免同名函数冲突
+ */
+function generateUniqueResourceName(pathSegments: string[], method: string): string {
+  // 过滤掉路径参数（以 { 开头的段）
+  const staticSegments = pathSegments.filter(s => !s.startsWith('{'));
+
+  // 获取最后一个静态段作为基础资源名
+  const baseResource = staticSegments[staticSegments.length - 1] || 'Api';
+
+  // 处理资源名称：分割连字符和下划线，转换为驼峰命名
+  const resourceName = baseResource
+    .split(/[-_]/)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+
+  // 检查是否有路径参数
+  const hasPathParams = pathSegments.some(s => s.startsWith('{'));
+
+  // 如果有路径参数，添加标识符
+  if (hasPathParams) {
+    // 提取路径参数名并转换为驼峰命名
+    const pathParams = pathSegments
+      .filter(s => s.startsWith('{'))
+      .map(param => param.slice(1, -1)) // 去掉 { }
+      .map(param => param.charAt(0).toUpperCase() + param.slice(1))
+      .join('');
+
+    return `${resourceName}By${pathParams}`;
+  }
+
+  // 如果没有路径参数，检查是否有多个相同路径的接口
+  // 通过方法名来区分（虽然通常不会出现这种情况，但为了保险起见）
+  const methodSuffix = method.toUpperCase();
+  if (methodSuffix !== 'GET') {
+    return `${resourceName}${methodSuffix}`;
+  }
+
+  return resourceName;
+}
 
 /**
  * 生成单个接口的 Mock 内容（不包含 import 语句）
@@ -10,12 +59,10 @@ export function generateMockEndpointContent(endpoint: ApiEndpoint, definitions?:
   // 生成方法前缀和命名空间（用于注释标记）
   const methodPrefix =
     endpoint.method.charAt(0).toUpperCase() + endpoint.method.slice(1).toLowerCase();
-  const pathSegments = endpoint.path.split('/').filter(s => s && !s.startsWith('{'));
-  const resourceName =
-    pathSegments[pathSegments.length - 1]
-      ?.split(/[-_]/)
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-      .join('') || 'Api';
+
+  // 生成唯一的资源名称，包含路径参数信息
+  const pathSegments = endpoint.path.split('/').filter(s => s);
+  const resourceName = generateUniqueResourceName(pathSegments, endpoint.method);
   const namespaceName = `${methodPrefix}${resourceName}`;
 
   // 生成参数校验数组
@@ -379,7 +426,7 @@ function generateMockValueForField(
       }
       // 使用枚举值
       if (schema.enum && schema.enum.length > 0) {
-        const enumValues = schema.enum.map((v: any) => `'${v}'`).join(', ');
+        const enumValues = schema.enum.map((v: any) => `"${v}"`).join(', ');
         return wrapMockTemplate(`@pick([${enumValues}])`);
       }
       return wrapMockTemplate('@cword(3, 8)');
@@ -392,7 +439,7 @@ function generateMockValueForField(
       }
       // 使用枚举值
       if (schema.enum && schema.enum.length > 0) {
-        const enumValues = schema.enum.join(', ');
+        const enumValues = schema.enum.map((v: any) => `"${v}"`).join(', ');
         return wrapMockTemplate(`@pick([${enumValues}])`);
       }
       // 使用范围
@@ -462,6 +509,11 @@ function extractApifoxMockRule(schema: any): string | null {
     return null;
   }
 
+  // 检查规则是否包含中文字符，如果包含则过滤掉
+  if (containsChinese(mockRule)) {
+    return null;
+  }
+
   // 转换 Apifox 模板语法为 Mock.js 语法
   const convertedRule = convertApifoxTemplateToMockJs(mockRule);
 
@@ -480,29 +532,9 @@ function convertApifoxTemplateToMockJs(template: string): string {
 
   // 如果是 Apifox 的模板语法 {{...}}，尝试转换
   if (template.includes('{{') && template.includes('}}')) {
-    // Apifox 常见模板映射到 Mock.js
-    const mappings: Record<string, string> = {
-      '{{$string.uuid}}': '@guid',
-      '{{$person.fullName}}': '@cname',
-      "{{$person.fullName(locale='zh_CN')}}": '@cname',
-      "{{$person.fullName(locale='en_US')}}": '@name',
-      '{{$person.firstName}}': '@cfirst',
-      '{{$person.lastName}}': '@clast',
-      '{{$internet.email}}': '@email',
-      '{{$internet.url}}': '@url',
-      '{{$internet.ip}}': '@ip',
-      '{{$phone.number}}': '/^1[3-9]\\d{9}$/',
-      '{{$address.city}}': '@city',
-      '{{$address.province}}': '@province',
-      '{{$address.county}}': '@county',
-      '{{$date.now}}': '@now',
-      '{{$date.recent}}': '@datetime',
-      '{{$image.image}}': '@image',
-      '{{$string.sample}}': '@cword(3, 8)',
-      '{{$number.int}}': '@integer(0, 100)',
-      '{{$number.float}}': '@float(0, 100, 2, 2)',
-      '{{$boolean}}': '@boolean'
-    };
+    // 从配置文件加载映射规则
+    const mappingsLoader = MockMappingsLoader.getInstance();
+    const mappings = mappingsLoader.getMappings();
 
     // 尝试精确匹配
     if (mappings[template]) {
