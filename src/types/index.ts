@@ -12,29 +12,23 @@ export interface ApifoxConfig {
   mockPort: number;
   /** API 筛选配置（可选） */
   apiFilter?: ApiFilter;
+  /** 项目分支 ID（可选） */
+  branchId?: number;
 }
 
 // API 筛选配置
 export interface ApiFilter {
-  // ========== Apifox 服务端过滤配置（通过 export-openapi API） ==========
-  /** 导出范围配置（服务端过滤） */
+  /** 导出范围配置 */
   scope?: {
-    /**
-     * 导出类型
-     * - ALL: 导出所有接口
-     * - FOLDER: 按文件夹导出
-     * - TAG: 按标签导出
-     */
-    type?: 'ALL' | 'FOLDER' | 'TAG';
-    /** 包含的标签（仅当 type 为 TAG 时有效） */
+    /** 包含的标签列表 */
     includedByTags?: string[];
-    /** 排除的接口状态（通过标签字段实现） */
+    /** 排除的接口状态（支持中文：设计中、已废弃、待确定等） */
     excludedByTags?: string[];
-    /** 文件夹路径列表（仅当 type 为 FOLDER 时有效，支持多个中文文件夹名称匹配） */
+    /** 文件夹路径列表（支持多个中文文件夹名称匹配，支持前缀匹配子目录） */
     folderPaths?: string[];
   };
 
-  /** 导出选项配置（服务端选项） - 已废弃，相关选项已默认启用 */
+  /** 导出选项配置 - 已废弃，相关选项已默认启用 */
   options?: {
     /** @deprecated 此选项已废弃，系统默认启用 */
     includeApifoxExtensionProperties?: boolean;
@@ -42,14 +36,13 @@ export interface ApiFilter {
     addFoldersToTags?: boolean;
   };
 
-  // ========== 客户端过滤配置（在生成 mock 和 types 时过滤） ==========
-  /** 包含的路径模式（支持通配符 * 和 **，客户端过滤） */
+  /** 包含的路径模式（支持通配符 * 和 **） */
   includePaths?: string[];
-  /** 排除的路径模式（支持通配符 * 和 **，客户端过滤） */
+  /** 排除的路径模式（支持通配符 * 和 **） */
   excludePaths?: string[];
-  /** 包含的 HTTP 方法（客户端过滤） */
+  /** 包含的 HTTP 方法 */
   includeMethods?: string[];
-  /** 排除的 HTTP 方法（客户端过滤） */
+  /** 排除的 HTTP 方法 */
   excludeMethods?: string[];
 }
 

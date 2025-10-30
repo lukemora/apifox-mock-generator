@@ -51,14 +51,19 @@ function buildRequestBody(config: ApifoxConfig): any {
     exportFormat: 'JSON'
   };
 
-  // 应用服务端过滤配置
+  // 添加分支配置（默认为 main）
+  if (config.branchId) {
+    requestBody.branchId = config.branchId;
+  }
+
+  // 应用过滤配置
   if (config.apiFilter) {
     if (config.apiFilter.scope) {
-      const scope: any = {};
+      const scope: any = {
+        // 写死为 ALL，导出所有接口，通过其他过滤条件进行筛选
+        type: 'ALL'
+      };
 
-      if (config.apiFilter.scope.type) {
-        scope.type = config.apiFilter.scope.type;
-      }
       if (
         config.apiFilter.scope.includedByTags &&
         config.apiFilter.scope.includedByTags.length > 0
@@ -69,12 +74,10 @@ function buildRequestBody(config: ApifoxConfig): any {
         scope.folderPaths = config.apiFilter.scope.folderPaths;
       }
 
-      if (Object.keys(scope).length > 0) {
-        requestBody.scope = scope;
-      }
+      requestBody.scope = scope;
     }
 
-    // 始终启用 Apifox 扩展属性和文件夹标签（写死为 true）
+    // 始终启用 Apifox 扩展属性和文件夹标签
     requestBody.options = {
       includeApifoxExtensionProperties: true,
       addFoldersToTags: true
