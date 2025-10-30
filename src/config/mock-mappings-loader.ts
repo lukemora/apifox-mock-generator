@@ -1,10 +1,4 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-// ES 模块中获取 __dirname 的替代方案
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { apifoxMockMappings } from './apifox-mock-mappings.js';
 
 /**
  * Apifox Mock 映射配置加载器
@@ -31,15 +25,9 @@ export class MockMappingsLoader {
    * 加载映射配置
    */
   private loadMappings(): void {
-    // 从项目根目录的 src/config 目录加载配置文件
-    const projectRoot = path.resolve(__dirname, '../..');
-    const configPath = path.join(projectRoot, 'src', 'config', 'apifox-mock-mappings.json');
-    const configData = fs.readFileSync(configPath, 'utf-8');
-    const config = JSON.parse(configData);
-
     // 将所有分类的映射合并到一个对象中
     this.mappings = {};
-    for (const category of Object.values(config)) {
+    for (const category of Object.values(apifoxMockMappings)) {
       Object.assign(this.mappings, category);
     }
   }
