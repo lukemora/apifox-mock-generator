@@ -1,14 +1,13 @@
 {
-  "projectId": "7163561",
-  "token": "APS-LNZPjGpUzSJMDRQrDgq11rdDWp1Ajrut",
+  "projectId": "7219799",
+  "token": "APS-XQrLSqLE4q0FOb0bGhaqYvTxSUQQFPeO",
   "mockDir": "./mock",
   "typesDir": "./src/types/mock",
   "generate": "all",
   "apiFilter": {
     "scope": {
-      "type": "ALL",
-      "excludedByTags": ["设计中", "已废弃", "待确定"],
-      "folderPaths": ["数据脱敏接口"]
+      "excludedByTags": ["设计中", "已废弃"],
+      "folderPaths": []
     },
     "includePaths": [],
     "excludePaths": [],

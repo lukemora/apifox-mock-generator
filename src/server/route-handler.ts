@@ -73,18 +73,21 @@ export class RouteHandler {
     try {
       const proxyData = await this.remoteProxy.proxyRequest(req);
 
-      // 检查响应是否包含错误信息
-      if (proxyData && typeof proxyData === 'object' && proxyData.code && proxyData.code !== 0) {
-        // 远程服务器返回了错误，直接返回错误响应
-        res.status(proxyData.code >= 400 ? proxyData.code : 400).json(proxyData);
-        logger.error(
-          `${req.method} ${req.path} -> ${proxyData.code} (远程服务器响应错误:${proxyData.code})`
-        );
+      // 直接返回远程服务器的原始响应，不做任何包装和判断
+      res.json(proxyData);
+
+      // 根据业务 code 记录不同的日志级别（仅用于日志，不影响返回）
+      const successCodes = [0, 200, 100200];
+      if (proxyData && typeof proxyData === 'object' && proxyData.code !== undefined) {
+        if (successCodes.includes(proxyData.code)) {
+          logger.success(`${req.method} ${req.path} -> code:${proxyData.code} (远程服务器)`);
+        } else {
+          logger.warn(`${req.method} ${req.path} -> code:${proxyData.code} (远程服务器业务错误)`);
+        }
       } else {
-        // 正常响应
-        res.json(proxyData);
         logger.success(`${req.method} ${req.path} -> 200 (远程服务器)`);
       }
+
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';

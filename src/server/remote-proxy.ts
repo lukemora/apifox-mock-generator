@@ -31,20 +31,17 @@ export class RemoteProxy {
           'Content-Type': 'application/json',
           ...req.headers
         },
-        data: req.method !== 'GET' ? req.body : undefined
+        data: req.method !== 'GET' ? req.body : undefined,
+        // 禁用 axios 的状态码验证，让所有响应都被视为成功
+        validateStatus: () => true
       });
 
-      logger.info(`📊 远程服务器响应: ${response.status} ${response.statusText}`);
-      logger.info(`✅ 远程服务器响应成功: ${response.status}`);
+      logger.info(`📊 远程服务器响应: ${response.status}`);
+      logger.success(`✅ 远程服务器响应: ${JSON.stringify(response.data).substring(0, 100)}...`);
+      // 直接返回原始响应数据，不做任何处理
       return response.data;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response) {
-        logger.error(`❌ 远程服务器错误响应: ${JSON.stringify(error.response.data)}`);
-        // 直接返回远程服务器的错误响应，保持原始错误信息
-        return error.response.data;
-      }
-
-      // 网络错误或其他异常
+      // 只处理网络错误或其他异常（非 HTTP 响应错误）
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       logger.error(`❌ 代理请求失败: ${errorMessage}`);
 
