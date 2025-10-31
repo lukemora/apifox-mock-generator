@@ -746,13 +746,15 @@ function generateNestedInterface(
   // 处理引用
   if (schema.$ref) {
     const refName = schema.$ref.split('/').pop();
+    // 解码 URL 编码的 schema 名称
+    const decodedRefName = decodeURIComponent(refName || '');
     // 使用映射关系查找实际的schema名称
-    const actualRefName = schemaNameMap?.get(refName || '') || refName;
+    const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
 
     // 检查是否是标准响应体 schema，如果是则直接展开字段
     // 标准响应体通常包含 code, msg, data 字段
-    if (definitions?.[refName || '']) {
-      const schema = definitions[refName || ''];
+    if (definitions?.[decodedRefName]) {
+      const schema = definitions[decodedRefName];
       if (
         schema.properties &&
         schema.properties.code &&
@@ -770,15 +772,11 @@ function generateNestedInterface(
       }
     }
 
-    // 查找原始的中文schema名称
-    const originalSchemaName = Array.from(schemaNameMap?.entries() || []).find(
-      ([key, value]) => value === actualRefName
-    )?.[0];
-
-    if (originalSchemaName && definitions?.[originalSchemaName]) {
+    // 如果在 definitions 中找到了引用的 schema，直接递归处理
+    if (definitions?.[decodedRefName]) {
       // 递归处理引用的schema
       return generateNestedInterface(
-        definitions[originalSchemaName],
+        definitions[decodedRefName],
         definitions,
         context,
         interfaceName,
