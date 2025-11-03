@@ -221,19 +221,72 @@ function generateMockTemplateForResponse(
   schema: any,
   definitions?: any,
   indent: string = '\t\t\t\t\t',
-  interfaceInfo?: string
+  interfaceInfo?: string,
+  depth: number = 0,
+  visitedRefs: Set<string> = new Set()
 ): string {
+  // 防止递归深度过深，最大深度设置为 3（允许更深一层的递归）
+  if (depth > 3) {
+    console.warn(`[Mock Generator] 递归深度超过限制(depth: ${depth})，返回基本对象结构`);
+    // 返回基本对象结构而不是空对象
+    if (schema && schema.properties) {
+      let objContent = '{';
+      const props = Object.entries(schema.properties);
+      props.forEach(([key, prop], index) => {
+        const propSchema = prop as any;
+        const comma = index < props.length - 1 ? ',' : '';
+        // 生成基本值，不继续递归
+        let mockValue = 'null';
+        switch (propSchema.type) {
+          case 'string':
+            mockValue = `'${propSchema.example || 'string'}'`;
+            break;
+          case 'number':
+          case 'integer':
+            mockValue = propSchema.example?.toString() || '0';
+            break;
+          case 'boolean':
+            mockValue = 'false';
+            break;
+          case 'array':
+            mockValue = '[]';
+            break;
+          case 'object':
+            mockValue = '{}';
+            break;
+        }
+        objContent += `\n${indent}'${key}': ${mockValue}${comma}`;
+      });
+      objContent += `\n${indent.slice(0, -1)}}`;
+      return objContent;
+    }
+    return '{}';
+  }
+
   if (!schema) return '{}';
 
   // 处理引用
   if (schema.$ref) {
     const refName = decodeURIComponent(schema.$ref.split('/').pop() || '');
+
+    // 检测循环引用
+    if (visitedRefs.has(refName)) {
+      console.warn(`[Mock Generator] 检测到循环引用: ${refName}，返回默认值`);
+      return '{}';
+    }
+
     if (definitions?.[refName]) {
+      // 添加到已访问集合
+      const newVisitedRefs = new Set(visitedRefs);
+      newVisitedRefs.add(refName);
+
       return generateMockTemplateForResponse(
         definitions[refName],
         definitions,
         indent,
-        interfaceInfo
+        interfaceInfo,
+        depth + 1,
+        newVisitedRefs
       );
     }
   }
@@ -255,7 +308,14 @@ function generateMockTemplateForResponse(
 
       props.forEach(([key, prop], index) => {
         const propSchema = prop as any;
-        let mockValue = generateMockValueForField(key, propSchema, definitions, interfaceInfo);
+        let mockValue = generateMockValueForField(
+          key,
+          propSchema,
+          definitions,
+          interfaceInfo,
+          depth,
+          visitedRefs
+        );
 
         // 如果同时存在 code 和 msg 字段，使用共享的随机数
         if (needsSharedRandom) {
@@ -327,7 +387,9 @@ function generateMockTemplateForResponse(
             definitions[refName],
             definitions,
             indent + '\t',
-            interfaceInfo
+            interfaceInfo,
+            depth + 1,
+            visitedRefs
           );
         } else {
           // 引用解析失败，使用默认对象结构
@@ -348,7 +410,9 @@ function generateMockTemplateForResponse(
                 definitions[refName],
                 definitions,
                 indent + '\t',
-                interfaceInfo
+                interfaceInfo,
+                depth + 1,
+                visitedRefs
               );
             } else {
               itemTemplate = '{}';
@@ -365,7 +429,9 @@ function generateMockTemplateForResponse(
           schema.items,
           definitions,
           indent + '\t',
-          interfaceInfo
+          interfaceInfo,
+          depth + 1,
+          visitedRefs
         );
       }
 
@@ -373,7 +439,7 @@ function generateMockTemplateForResponse(
       return `[${itemTemplate}]`;
 
     default:
-      return generateMockValueForField('', schema, definitions, interfaceInfo);
+      return generateMockValueForField('', schema, definitions, interfaceInfo, depth, visitedRefs);
   }
 }
 
@@ -384,15 +450,43 @@ function generateMockValueForField(
   fieldName: string,
   schema: any,
   definitions?: any,
-  interfaceInfo?: string
+  interfaceInfo?: string,
+  depth: number = 0,
+  visitedRefs: Set<string> = new Set()
 ): string {
+  // 防止递归深度过深
+  if (depth > 2) {
+    console.warn(
+      `[Mock Generator] generateMockValueForField 递归深度超过限制(depth: ${depth})，返回默认值`
+    );
+    return 'null';
+  }
+
   if (!schema) return 'null';
 
   // 处理引用
   if (schema.$ref) {
     const refName = decodeURIComponent(schema.$ref.split('/').pop() || '');
+
+    // 检测循环引用
+    if (visitedRefs.has(refName)) {
+      console.warn(
+        `[Mock Generator] generateMockValueForField 检测到循环引用: ${refName}，返回默认值`
+      );
+      return 'null';
+    }
+
     if (definitions?.[refName]) {
-      return generateMockValueForField(fieldName, definitions[refName], definitions, interfaceInfo);
+      const newVisitedRefs = new Set(visitedRefs);
+      newVisitedRefs.add(refName);
+      return generateMockValueForField(
+        fieldName,
+        definitions[refName],
+        definitions,
+        interfaceInfo,
+        depth + 1,
+        newVisitedRefs
+      );
     }
   }
 
@@ -455,18 +549,39 @@ function generateMockValueForField(
       return wrapMockTemplate('@boolean');
 
     case 'array':
-      const itemTemplate = generateMockTemplateForResponse(schema.items, definitions);
+      const itemTemplate = generateMockTemplateForResponse(
+        schema.items,
+        definitions,
+        '\t\t\t\t\t',
+        interfaceInfo,
+        depth + 1,
+        visitedRefs
+      );
       return `[${itemTemplate}]`;
 
     case 'object':
-      return generateMockTemplateForResponse(schema, definitions);
+      return generateMockTemplateForResponse(
+        schema,
+        definitions,
+        '\t\t\t\t\t',
+        interfaceInfo,
+        depth + 1,
+        visitedRefs
+      );
 
     default:
       // 对于未知类型，提供合理的默认值而不是 null
       if (schema && typeof schema === 'object') {
         // 如果是对象但没有明确的类型，尝试生成基本结构
         if (schema.properties && Object.keys(schema.properties).length > 0) {
-          return generateMockTemplateForResponse(schema, definitions);
+          return generateMockTemplateForResponse(
+            schema,
+            definitions,
+            '\t\t\t\t\t',
+            interfaceInfo,
+            depth + 1,
+            visitedRefs
+          );
         }
         // 如果是数组但没有 items 定义，返回空数组
         if (schema.type === 'array') {

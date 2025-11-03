@@ -295,9 +295,20 @@ function generateInterfaceBody(
   definitions: any,
   context: TypeGenerationContext,
   typePrefix: string,
-  schemaNameMap?: Map<string, string>
+  schemaNameMap?: Map<string, string>,
+  currentSchemaName?: string // 当前 schema 的原始名称
 ): string {
   if (!schema) return '{}';
+
+  // 如果没有传入 currentSchemaName，尝试从 definitions 中查找
+  if (!currentSchemaName && definitions) {
+    for (const [name, def] of Object.entries(definitions)) {
+      if (def === schema) {
+        currentSchemaName = name;
+        break;
+      }
+    }
+  }
 
   // 处理引用
   if (schema.$ref) {
@@ -306,6 +317,11 @@ function generateInterfaceBody(
     const decodedRefName = decodeURIComponent(refName || '');
     // 使用映射关系查找实际的schema名称
     const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
+
+    // 设置 currentSchemaName 为引用的 schema 名称
+    if (!currentSchemaName && decodedRefName) {
+      currentSchemaName = decodedRefName;
+    }
 
     // 检查是否是标准响应体 schema，如果是则直接展开字段
     // 标准响应体通常包含 code, msg, data 字段
@@ -318,7 +334,13 @@ function generateInterfaceBody(
         schema.properties.data
       ) {
         // 这是一个标准响应体结构，直接展开字段而不是返回空对象
-        return generateStandardResponseBody(schema, definitions, context, schemaNameMap);
+        return generateStandardResponseBody(
+          schema,
+          definitions,
+          context,
+          schemaNameMap,
+          decodedRefName
+        );
       }
     }
 
@@ -333,7 +355,9 @@ function generateInterfaceBody(
           definitions,
           context,
           interfaceName,
-          schemaNameMap
+          schemaNameMap,
+          0,
+          new Set()
         );
         context.complexTypes.set(interfaceName, nestedInterface);
         context.generatedTypes.add(interfaceName);
@@ -407,7 +431,9 @@ function generateInterfaceBody(
               definitions,
               context,
               resDataInterfaceName,
-              schemaNameMap
+              schemaNameMap,
+              0,
+              new Set()
             );
             context.complexTypes.set(resDataInterfaceName, nestedInterface);
             context.generatedTypes.add(resDataInterfaceName);
@@ -438,7 +464,9 @@ function generateInterfaceBody(
                   definitions,
                   context,
                   interfaceName,
-                  schemaNameMap
+                  schemaNameMap,
+                  0,
+                  new Set()
                 );
                 context.complexTypes.set(interfaceName, nestedInterface);
                 context.generatedTypes.add(interfaceName);
@@ -474,7 +502,9 @@ function generateInterfaceBody(
               definitions,
               context,
               interfaceName,
-              schemaNameMap
+              schemaNameMap,
+              0,
+              new Set()
             );
             context.complexTypes.set(interfaceName, nestedInterface);
             context.generatedTypes.add(interfaceName);
@@ -493,21 +523,33 @@ function generateInterfaceBody(
                 const decodedRefName = decodeURIComponent(refName || '');
                 const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
 
-                // 为 Apifox 数据模型生成新的类型名称，避免与原始 schema 名称冲突
-                const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
-                tsType = `${itemInterfaceName}[]`;
-
-                // 生成数组项接口定义
-                if (!context.generatedTypes.has(itemInterfaceName)) {
-                  const itemInterface = generateNestedInterface(
-                    definitions?.[decodedRefName],
-                    definitions,
-                    context,
-                    itemInterfaceName,
-                    schemaNameMap
+                // 对于 children 字段，直接使用父类型引用，避免生成嵌套类型
+                if (propName === 'children') {
+                  const parentInterfaceName = `${typePrefix}${actualRefName}`;
+                  tsType = `${parentInterfaceName}[]`;
+                  console.log(
+                    `[Type Generator] x-apifox-refs children字段直接使用父类型: ${parentInterfaceName}[]`
                   );
-                  context.complexTypes.set(itemInterfaceName, itemInterface);
-                  context.generatedTypes.add(itemInterfaceName);
+                } else {
+                  // 为 Apifox 数据模型生成新的类型名称，避免与原始 schema 名称冲突
+                  const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
+                  tsType = `${itemInterfaceName}[]`;
+
+                  // 生成数组项接口定义
+                  if (!context.generatedTypes.has(itemInterfaceName)) {
+                    const itemInterface = generateNestedInterface(
+                      definitions?.[decodedRefName],
+                      definitions,
+                      context,
+                      itemInterfaceName,
+                      schemaNameMap,
+                      0,
+                      new Set(),
+                      decodedRefName // 传递引用的 schema 名称
+                    );
+                    context.complexTypes.set(itemInterfaceName, itemInterface);
+                    context.generatedTypes.add(itemInterfaceName);
+                  }
                 }
               } else {
                 const itemType = getTypeScriptType(
@@ -551,7 +593,9 @@ function generateInterfaceBody(
                       definitions,
                       context,
                       itemInterfaceName,
-                      schemaNameMap
+                      schemaNameMap,
+                      0,
+                      new Set()
                     );
                     context.complexTypes.set(itemInterfaceName, itemInterface);
                     context.generatedTypes.add(itemInterfaceName);
@@ -569,21 +613,46 @@ function generateInterfaceBody(
             const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
 
             if (definitions?.[decodedRefName]) {
-              // 为 Apifox 数据模型生成新的类型名称，避免与原始 schema 名称冲突
-              const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
-              tsType = `${itemInterfaceName}[]`;
-
-              // 生成数组项接口定义
-              if (!context.generatedTypes.has(itemInterfaceName)) {
-                const itemInterface = generateNestedInterface(
-                  definitions[decodedRefName],
-                  definitions,
-                  context,
-                  itemInterfaceName,
-                  schemaNameMap
+              // 对于 children 字段，直接使用父类型引用，避免生成嵌套类型
+              if (propName === 'children') {
+                const parentInterfaceName = `${typePrefix}${actualRefName}`;
+                tsType = `${parentInterfaceName}[]`;
+                console.log(
+                  `[Type Generator] generateInterfaceBody children字段直接使用父类型: ${parentInterfaceName}[]`
                 );
-                context.complexTypes.set(itemInterfaceName, itemInterface);
-                context.generatedTypes.add(itemInterfaceName);
+              }
+              // 检测其他自引用情况
+              else {
+                const isSelfReference = currentSchemaName && decodedRefName === currentSchemaName;
+
+                if (isSelfReference) {
+                  // 自引用结构，直接使用父类型
+                  const parentInterfaceName = `${typePrefix}${actualRefName}`;
+                  tsType = `${parentInterfaceName}[]`;
+                  console.log(
+                    `[Type Generator] generateInterfaceBody 检测到自引用字段: ${typePrefix}.${propName}，使用类型: ${parentInterfaceName}[]`
+                  );
+                } else {
+                  // 为 Apifox 数据模型生成新的类型名称，避免与原始 schema 名称冲突
+                  const itemInterfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
+                  tsType = `${itemInterfaceName}[]`;
+
+                  // 生成数组项接口定义
+                  if (!context.generatedTypes.has(itemInterfaceName)) {
+                    const itemInterface = generateNestedInterface(
+                      definitions[decodedRefName],
+                      definitions,
+                      context,
+                      itemInterfaceName,
+                      schemaNameMap,
+                      0,
+                      new Set(),
+                      decodedRefName // 传递引用的 schema 名称
+                    );
+                    context.complexTypes.set(itemInterfaceName, itemInterface);
+                    context.generatedTypes.add(itemInterfaceName);
+                  }
+                }
               }
             } else {
               // 如果没有找到 schema 定义，使用原始名称
@@ -601,7 +670,9 @@ function generateInterfaceBody(
                 definitions,
                 context,
                 itemInterfaceName,
-                schemaNameMap
+                schemaNameMap,
+                0,
+                new Set()
               );
               context.complexTypes.set(itemInterfaceName, itemInterface);
               context.generatedTypes.add(itemInterfaceName);
@@ -633,7 +704,9 @@ function generateInterfaceBody(
                   definitions,
                   context,
                   interfaceName,
-                  schemaNameMap
+                  schemaNameMap,
+                  0,
+                  new Set()
                 );
                 context.complexTypes.set(interfaceName, nestedInterface);
                 context.generatedTypes.add(interfaceName);
@@ -662,7 +735,8 @@ function generateStandardResponseBody(
   schema: any,
   schemas: any,
   context: TypeGenerationContext,
-  schemaNameMap?: Map<string, string>
+  schemaNameMap?: Map<string, string>,
+  currentSchemaName?: string // 当前 schema 的原始名称
 ): string {
   if (!schema.properties) {
     return '{}';
@@ -705,12 +779,30 @@ function generateStandardResponseBody(
       } else {
         // 如果data不是null，生成正常的ResData接口
         if (!context.generatedTypes.has(resDataInterfaceName)) {
+          // 提取 data 字段的 schema 名称
+          let dataSchemaName: string | undefined;
+          if (prop.$ref) {
+            const refName = prop.$ref.split('/').pop();
+            dataSchemaName = decodeURIComponent(refName || '');
+          } else if (prop.properties) {
+            // 对于直接定义的对象，尝试从 definitions 中查找
+            for (const [name, def] of Object.entries(schemas || {})) {
+              if (def === prop) {
+                dataSchemaName = name;
+                break;
+              }
+            }
+          }
+
           const nestedInterface = generateNestedInterface(
             prop,
             schemas,
             context,
             resDataInterfaceName,
-            schemaNameMap
+            schemaNameMap,
+            0,
+            new Set(),
+            dataSchemaName // 传递 data 字段的 schema 名称
           );
           context.complexTypes.set(resDataInterfaceName, nestedInterface);
           context.generatedTypes.add(resDataInterfaceName);
@@ -737,8 +829,19 @@ function generateNestedInterface(
   definitions: any,
   context: TypeGenerationContext,
   interfaceName: string,
-  schemaNameMap?: Map<string, string>
+  schemaNameMap?: Map<string, string>,
+  depth: number = 0,
+  visitedRefs: Set<string> = new Set(),
+  currentSchemaName?: string // 当前 schema 的原始名称（用于检测自引用）
 ): string {
+  // 防止递归深度过深，最大深度设置为 3（允许更深一层的递归）
+  if (depth > 3) {
+    console.warn(
+      `[Type Generator] 递归深度超过限制(depth: ${depth})，接口: ${interfaceName}，返回空接口`
+    );
+    return `export interface ${interfaceName} {}`;
+  }
+
   if (!schema) {
     return `export interface ${interfaceName} {}`;
   }
@@ -748,6 +851,13 @@ function generateNestedInterface(
     const refName = schema.$ref.split('/').pop();
     // 解码 URL 编码的 schema 名称
     const decodedRefName = decodeURIComponent(refName || '');
+
+    // 检测循环引用
+    if (visitedRefs.has(decodedRefName)) {
+      console.warn(`[Type Generator] 检测到循环引用: ${decodedRefName}，接口: ${interfaceName}`);
+      return `export interface ${interfaceName} {}`;
+    }
+
     // 使用映射关系查找实际的schema名称
     const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
 
@@ -774,14 +884,31 @@ function generateNestedInterface(
 
     // 如果在 definitions 中找到了引用的 schema，直接递归处理
     if (definitions?.[decodedRefName]) {
-      // 递归处理引用的schema
+      // 添加到已访问集合
+      const newVisitedRefs = new Set(visitedRefs);
+      newVisitedRefs.add(decodedRefName);
+
+      // 递归处理引用的schema，传递当前 schema 名称
       return generateNestedInterface(
         definitions[decodedRefName],
         definitions,
         context,
         interfaceName,
-        schemaNameMap
+        schemaNameMap,
+        depth + 1,
+        newVisitedRefs,
+        decodedRefName // 传递当前 schema 的原始名称
       );
+    }
+  }
+
+  // 如果没有传入 currentSchemaName，尝试从 definitions 中查找
+  if (!currentSchemaName && definitions) {
+    for (const [name, def] of Object.entries(definitions)) {
+      if (def === schema) {
+        currentSchemaName = name;
+        break;
+      }
     }
   }
 
@@ -846,7 +973,9 @@ function generateNestedInterface(
               definitions,
               context,
               nestedInterfaceName,
-              schemaNameMap
+              schemaNameMap,
+              depth + 1,
+              visitedRefs
             );
             context.complexTypes.set(nestedInterfaceName, nestedInterface);
             context.generatedTypes.add(nestedInterfaceName);
@@ -882,55 +1011,169 @@ function generateNestedInterface(
           definitions,
           context,
           nestedInterfaceName,
-          schemaNameMap
+          schemaNameMap,
+          depth + 1,
+          visitedRefs
         );
         context.complexTypes.set(nestedInterfaceName, nestedInterface);
         context.generatedTypes.add(nestedInterfaceName);
       }
     } else if (prop.type === 'array' && prop.items) {
       // 处理数组类型
-      if (prop.items.$ref) {
+      if (prop.items['x-apifox-refs']) {
+        // 数组项是 Apifox 数据模型引用
+        const refs = prop.items['x-apifox-refs'];
+        const refKeys = Object.keys(refs);
+
+        if (refKeys.length > 0) {
+          const ref = refs[refKeys[0]];
+          if (ref && ref.$ref) {
+            const refName = ref.$ref.split('/').pop();
+            const decodedRefName = decodeURIComponent(refName || '');
+            const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
+
+            if (definitions?.[decodedRefName]) {
+              // 对于 children 字段，如果递归深度超过1层，直接使用父类型引用
+              if (propName === 'children' && depth > 1) {
+                tsType = `${interfaceName}[]`;
+                console.log(
+                  `[Type Generator] x-apifox-refs children字段递归深度超过1层(depth: ${depth})，使用父类型: ${interfaceName}[]`
+                );
+              }
+              // 检测自引用
+              else {
+                const refSchema = definitions[decodedRefName];
+                const isSelfReference =
+                  visitedRefs.has(decodedRefName) ||
+                  (propName === 'children' &&
+                    currentSchemaName &&
+                    decodedRefName === currentSchemaName) ||
+                  (propName === 'children' && refSchema === schema);
+
+                if (isSelfReference) {
+                  // 自引用结构（如树形结构的 children），直接使用父类型
+                  tsType = `${interfaceName}[]`;
+                  console.log(
+                    `[Type Generator] 检测到 x-apifox-refs 自引用字段: ${interfaceName}.${propName} (schemaName: ${currentSchemaName}, refName: ${decodedRefName})，使用自身类型`
+                  );
+                } else {
+                  // 为 Apifox 数据模型生成新的类型名称
+                  const itemInterfaceName = `${interfaceName}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
+                  tsType = `${itemInterfaceName}[]`;
+
+                  // 生成数组项接口定义
+                  if (!context.generatedTypes.has(itemInterfaceName)) {
+                    const itemInterface = generateNestedInterface(
+                      definitions[decodedRefName],
+                      definitions,
+                      context,
+                      itemInterfaceName,
+                      schemaNameMap,
+                      depth + 1,
+                      visitedRefs,
+                      decodedRefName // 传递引用的 schema 名称
+                    );
+                    context.complexTypes.set(itemInterfaceName, itemInterface);
+                    context.generatedTypes.add(itemInterfaceName);
+                  }
+                }
+              }
+            } else {
+              tsType = `${actualRefName}[]`;
+            }
+          } else {
+            tsType =
+              getTypeScriptType(prop.items, schemaNameMap, context, definitions, interfaceName) +
+              '[]';
+          }
+        } else {
+          tsType = 'any[]';
+        }
+      } else if (prop.items.$ref) {
         // 数组项是引用类型
         const refName = prop.items.$ref.split('/').pop();
         const decodedRefName = decodeURIComponent(refName || '');
         const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
 
         if (definitions?.[decodedRefName]) {
-          // 为 Apifox 数据模型生成新的类型名称
+          // 对于 children 字段，如果递归深度超过1层，直接使用父类型引用
+          if (propName === 'children' && depth > 1) {
+            tsType = `${interfaceName}[]`;
+            console.log(
+              `[Type Generator] children字段递归深度超过1层(depth: ${depth})，使用父类型: ${interfaceName}[]`
+            );
+          }
+          // 检测自引用：
+          // 1. 字段名是 children 且引用的 schema 名称与当前 schema 名称相同
+          // 2. 或者 visitedRefs 中已经有这个引用（说明正在递归生成中）
+          else {
+            const refSchema = definitions[decodedRefName];
+            const isSelfReference =
+              visitedRefs.has(decodedRefName) ||
+              (propName === 'children' &&
+                currentSchemaName &&
+                decodedRefName === currentSchemaName) ||
+              (propName === 'children' && refSchema === schema);
+
+            if (isSelfReference) {
+              // 自引用结构（如树形结构的 children），直接使用父类型
+              tsType = `${interfaceName}[]`;
+              console.log(
+                `[Type Generator] 检测到引用自引用字段: ${interfaceName}.${propName} (schemaName: ${currentSchemaName}, refName: ${decodedRefName})，使用自身类型`
+              );
+            } else {
+              // 为 Apifox 数据模型生成新的类型名称
+              const itemInterfaceName = `${interfaceName}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
+              tsType = `${itemInterfaceName}[]`;
+
+              // 生成数组项接口定义
+              if (!context.generatedTypes.has(itemInterfaceName)) {
+                const itemInterface = generateNestedInterface(
+                  definitions[decodedRefName],
+                  definitions,
+                  context,
+                  itemInterfaceName,
+                  schemaNameMap,
+                  depth + 1,
+                  visitedRefs,
+                  decodedRefName // 传递引用的 schema 名称
+                );
+                context.complexTypes.set(itemInterfaceName, itemInterface);
+                context.generatedTypes.add(itemInterfaceName);
+              }
+            }
+          }
+        } else {
+          tsType = `${actualRefName}[]`;
+        }
+      } else if (prop.items.type === 'object' && prop.items.properties) {
+        // 数组中的对象，检查是否是自引用
+        if (propName === 'children' && prop.items === schema) {
+          // 自引用：children 引用自身
+          tsType = `${interfaceName}[]`;
+          console.log(
+            `[Type Generator] 检测到对象自引用字段: ${interfaceName}.${propName}，使用自身类型`
+          );
+        } else {
+          // 生成独立接口
           const itemInterfaceName = `${interfaceName}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
           tsType = `${itemInterfaceName}[]`;
 
           // 生成数组项接口定义
           if (!context.generatedTypes.has(itemInterfaceName)) {
             const itemInterface = generateNestedInterface(
-              definitions[decodedRefName],
+              prop.items,
               definitions,
               context,
               itemInterfaceName,
-              schemaNameMap
+              schemaNameMap,
+              depth + 1,
+              visitedRefs,
+              undefined // 对于非引用的对象，不传递 schema 名称
             );
             context.complexTypes.set(itemInterfaceName, itemInterface);
             context.generatedTypes.add(itemInterfaceName);
           }
-        } else {
-          tsType = `${actualRefName}[]`;
-        }
-      } else if (prop.items.type === 'object' && prop.items.properties) {
-        // 数组中的对象，生成独立接口
-        const itemInterfaceName = `${interfaceName}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: any, c: string) => c.toUpperCase())}Item`;
-        tsType = `${itemInterfaceName}[]`;
-
-        // 生成数组项接口定义
-        if (!context.generatedTypes.has(itemInterfaceName)) {
-          const itemInterface = generateNestedInterface(
-            prop.items,
-            definitions,
-            context,
-            itemInterfaceName,
-            schemaNameMap
-          );
-          context.complexTypes.set(itemInterfaceName, itemInterface);
-          context.generatedTypes.add(itemInterfaceName);
         }
       } else {
         tsType = `${getTypeScriptType(prop.items, schemaNameMap, context, definitions, interfaceName)}[]`;
@@ -954,7 +1197,9 @@ function generateNestedInterface(
             definitions,
             context,
             typeName,
-            schemaNameMap
+            schemaNameMap,
+            depth + 1,
+            visitedRefs
           );
           context.complexTypes.set(typeName, nestedInterface);
           context.generatedTypes.add(typeName);
