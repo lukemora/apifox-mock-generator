@@ -173,15 +173,8 @@ export class RouteHandler {
       // 返回 Mock 数据
       res.status(route.status || 200).json(responseData);
 
-      // 判断数据来源
-      const dataSource =
-        responseData && typeof responseData === 'object' && responseData.code !== undefined
-          ? responseData.code === 0
-            ? '本地Mock'
-            : '远程服务器'
-          : '本地Mock';
-
-      logger.success(`${route.method} ${route.path} -> ${route.status || 200} (${dataSource})`);
+      // Mock 模式下，数据来源都是本地Mock
+      logger.success(`${route.method} ${route.path} -> ${route.status || 200} (本地Mock)`);
       return true;
     } catch (error) {
       logger.error(

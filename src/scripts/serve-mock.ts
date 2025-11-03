@@ -84,7 +84,6 @@ async function main() {
       logger.info(`   📊 已加载路由: ${routes.length} 个`);
       logger.info('\n💡 提示:');
       logger.info('  - 🔥 热重载已启用，修改 Mock 文件将自动生效');
-      logger.info('  - 📝 修改 check 函数可控制数据源（本地/远程）');
       logger.info('  - 🛑 按 Ctrl+C 停止服务器\n');
 
       // 启动文件监听（热重载）

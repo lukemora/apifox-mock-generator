@@ -74,11 +74,19 @@ export async function loadMockRoutes(
         // 根据方法名找到对应的处理函数
         const methodName =
           routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
+
+        // 改进的函数查找逻辑：
+        // 1. 精确匹配函数名
+        // 2. 查找以 methodName 开头的函数（如 PostUserPOST）
+        // 3. 尝试 methodName + Role
+        // 4. 使用 default
         const handlerFunction =
           mockModule[methodName] ||
-          mockModule[`${methodName}Role`] || // 尝试 PostRole, GetRole 等
-          mockModule.default ||
-          Object.values(mockModule).find(exp => typeof exp === 'function' && exp.name);
+          Object.values(mockModule).find(
+            exp => typeof exp === 'function' && exp.name && exp.name.startsWith(methodName)
+          ) ||
+          mockModule[`${methodName}Role`] ||
+          mockModule.default;
 
         if (!handlerFunction || typeof handlerFunction !== 'function') {
           logger.warn(
@@ -144,11 +152,15 @@ export async function loadRouteFromFile(
     // 获取导出的函数
     const methodName =
       routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
+
+    // 改进的函数查找逻辑（与 loadMockRoutes 保持一致）
     const handlerFunction =
       mockModule[methodName] ||
-      mockModule[`${methodName}Role`] || // 尝试 PostRole, GetRole 等
-      mockModule.default ||
-      Object.values(mockModule).find(exp => typeof exp === 'function' && exp.name);
+      Object.values(mockModule).find(
+        exp => typeof exp === 'function' && exp.name && exp.name.startsWith(methodName)
+      ) ||
+      mockModule[`${methodName}Role`] ||
+      mockModule.default;
 
     if (!handlerFunction || typeof handlerFunction !== 'function') {
       return null;
@@ -171,11 +183,15 @@ export async function loadRouteFromFile(
             // 使用与初始加载相同的逻辑来查找处理函数
             const methodName =
               routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
+
+            // 改进的函数查找逻辑（与 loadMockRoutes 保持一致）
             const latestHandler =
               latestModule[methodName] ||
-              latestModule[`${methodName}Role`] || // 尝试 PostRole, GetRole 等
-              latestModule.default ||
-              Object.values(latestModule).find(exp => typeof exp === 'function' && exp.name);
+              Object.values(latestModule).find(
+                exp => typeof exp === 'function' && exp.name && exp.name.startsWith(methodName)
+              ) ||
+              latestModule[`${methodName}Role`] ||
+              latestModule.default;
 
             if (!latestHandler || typeof latestHandler !== 'function') {
               return handlerFunction(req.query, req.body, { req });

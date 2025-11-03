@@ -455,7 +455,7 @@ function generateMockValueForField(
   visitedRefs: Set<string> = new Set()
 ): string {
   // 防止递归深度过深
-  if (depth > 2) {
+  if (depth > 3) {
     console.warn(
       `[Mock Generator] generateMockValueForField 递归深度超过限制(depth: ${depth})，返回默认值`
     );
