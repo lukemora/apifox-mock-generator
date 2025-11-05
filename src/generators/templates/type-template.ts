@@ -76,10 +76,23 @@ export namespace ${context.namespaceName} {`;
  * 生成命名空间名称
  */
 function generateNamespaceName(endpoint: ApiEndpoint): string {
-  const pathSegments = endpoint.path.split('/').filter(s => s && !s.startsWith('{'));
+  const pathSegments = endpoint.path.split('/').filter(s => s);
+  const pathParams: string[] = [];
+  const regularSegments: string[] = [];
+
+  // 分离路径参数和普通段
+  for (const segment of pathSegments) {
+    if (segment.startsWith('{') && segment.endsWith('}')) {
+      // 提取路径参数名（去掉 { } 括号）
+      const paramName = segment.slice(1, -1);
+      pathParams.push(paramName);
+    } else {
+      regularSegments.push(segment);
+    }
+  }
 
   // 使用路径的所有有意义的段来生成名称
-  const namespaceName = pathSegments
+  let namespaceName = regularSegments
     .map(segment =>
       segment
         .split(/[-_]/)
@@ -87,6 +100,19 @@ function generateNamespaceName(endpoint: ApiEndpoint): string {
         .join('')
     )
     .join('');
+
+  // 如果有路径参数，添加到命名空间名称中以区分同名接口
+  if (pathParams.length > 0) {
+    const pathParamsSuffix = pathParams
+      .map(param =>
+        param
+          .split(/[-_]/)
+          .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+          .join('')
+      )
+      .join('And');
+    namespaceName += `By${pathParamsSuffix}`;
+  }
 
   // 添加请求方法后缀
   const methodSuffix =
