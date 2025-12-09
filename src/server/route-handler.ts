@@ -73,21 +73,52 @@ export class RouteHandler {
    */
   private async handleProxyRequest(req: any, res: any): Promise<boolean> {
     try {
-      const proxyData = await this.remoteProxy.proxyRequest(req);
+      const proxyResponse = await this.remoteProxy.proxyRequest(req);
 
-      // 直接返回远程服务器的原始响应，不做任何包装和判断
-      res.json(proxyData);
+      // 原样返回远程服务器的状态码
+      res.status(proxyResponse.status);
+
+      // 复制远程服务器的所有响应头（只排除连接层头部，这些不应该转发给客户端）
+      const headersToSkip = new Set([
+        'content-length', // Express 会自动计算，避免长度不匹配
+        'transfer-encoding', // HTTP/1.1 传输层特性，不应转发
+        'connection', // 连接管理，描述的是代理和远程服务器之间的连接
+        'keep-alive' // 连接保持，描述的是代理和远程服务器之间的连接
+      ]);
+
+      for (const [key, value] of Object.entries(proxyResponse.headers)) {
+        const lowerKey = key.toLowerCase();
+        if (!headersToSkip.has(lowerKey)) {
+          // 保留所有其他响应头，包括 content-type, content-encoding 等
+          res.setHeader(key, value);
+        }
+      }
+
+      // 原样返回响应体，不做任何处理
+      // 使用 send() 而不是 json()，这样可以发送原始数据，不会强制设置 Content-Type
+      res.send(proxyResponse.data);
+
+      // 记录实际返回的状态码（用于调试）
+      logger.info(`📤 代理返回状态码: ${proxyResponse.status}`);
 
       // 根据业务 code 记录不同的日志级别（仅用于日志，不影响返回）
       const successCodes = [0, 200, 100200];
-      if (proxyData && typeof proxyData === 'object' && proxyData.code !== undefined) {
-        if (successCodes.includes(proxyData.code)) {
-          logger.success(`${req.method} ${req.path} -> code:${proxyData.code} (远程服务器)`);
+      if (
+        proxyResponse.data &&
+        typeof proxyResponse.data === 'object' &&
+        proxyResponse.data.code !== undefined
+      ) {
+        if (successCodes.includes(proxyResponse.data.code)) {
+          logger.success(
+            `${req.method} ${req.path} -> code:${proxyResponse.data.code} (远程服务器)`
+          );
         } else {
-          logger.warn(`${req.method} ${req.path} -> code:${proxyData.code} (远程服务器业务错误)`);
+          logger.warn(
+            `${req.method} ${req.path} -> code:${proxyResponse.data.code} (远程服务器业务错误)`
+          );
         }
       } else {
-        logger.success(`${req.method} ${req.path} -> 200 (远程服务器)`);
+        logger.success(`${req.method} ${req.path} -> ${proxyResponse.status} (远程服务器)`);
       }
 
       return true;

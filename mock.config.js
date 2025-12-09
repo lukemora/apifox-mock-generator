@@ -15,7 +15,7 @@ export default {
   remoteTarget: true,
   // 当 Apifox 生成的路径与真实请求存在统一前缀差异时（如生成的是 /v1/xxx，实际请求是 /mng-common/api/v1/xxx），
   // 在这里声明真实请求的前缀。设置 pathPrefixes 后仅注册“带前缀路径”（如 /mng-common/api/v1/...）；未设置则按生成的原始路径。
-  pathPrefixes: '/mng-common/api',
+  //   pathPrefixes: '/mng-common/api',
   // 按接口粒度控制 Mock/Proxy（可选）
   mockRoutes: [
     // 示例：这些接口强制使用本地 Mock
