@@ -166,6 +166,7 @@ const login = async (
 - `projectId`: Apifox 项目 ID（在项目设置中查看）
 - `token`: Apifox API Token（在账号设置中生成, 需账号在当前项目中有管理员及以上权限）
 - `branchId`: 项目分支名称（number类型，有key则必须有值）
+- `apiUrl`: Apifox API 基础 URL（可选，默认：`https://api.apifox.com`）。用于自定义 Apifox API 服务器地址，适用于私有部署或内网环境
 - `mockDir`: Mock 文件生成目录（默认：`./mock`）
 - `typesDir`: TypeScript 类型文件生成目录（默认：`./src/types/mock`）
 - `generate`: 生成范围（可选，默认 `all`）。可选值：

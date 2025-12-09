@@ -16,6 +16,8 @@ export interface ApifoxConfig {
   apiFilter?: ApiFilter;
   /** 项目分支 ID（可选） */
   branchId?: number;
+  /** Apifox API 基础 URL（可选，默认为 https://api.apifox.com） */
+  apiUrl?: string;
 }
 
 // API 筛选配置

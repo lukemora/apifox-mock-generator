@@ -6,7 +6,7 @@
   "generate": "all",
   "apiFilter": {
     "scope": {
-      "excludedByTags": ["设计中", "已废弃"],
+      "excludedByTags": ["设计中", "已废弃", "待确定", "将废弃"],
       "folderPaths": []
     },
     "includePaths": [],

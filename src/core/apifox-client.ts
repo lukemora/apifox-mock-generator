@@ -11,7 +11,8 @@ export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<any>
   logger.info('从 Apifox 拉取 API 数据...');
 
   try {
-    const apiUrl = `https://api.apifox.com/v1/projects/${config.projectId}/export-openapi?locale=zh-CN`;
+    const baseUrl = config.apiUrl || 'https://api.apifox.com';
+    const apiUrl = `${baseUrl}/v1/projects/${config.projectId}/export-openapi?locale=zh-CN`;
 
     // 构建请求体
     const requestBody = buildRequestBody(config);
