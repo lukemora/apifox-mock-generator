@@ -79,9 +79,21 @@ async function main() {
       logger.success(`\n🚀 Mock 服务器已启动！`);
       logger.info(`   🌐 地址: http://localhost:${mockConfig.port}`);
       logger.info(`   ⚙️  工作模式: ${mockConfig.model}`);
-      logger.info(`   🎯 目标服务器: ${mockConfig.target}`);
-      logger.info(`   📁 Mock 目录: ${apifoxConfig.mockDir}`);
-      logger.info(`   📊 已加载路由: ${routes.length} 个`);
+      if (mockConfig.model === 'mock') {
+        // 纯 mock 模式：只在存在 proxyRoutes 时提示目标服务器
+        if (mockConfig.proxyRoutes?.length) {
+          logger.info(`   🎯 目标服务器: ${mockConfig.target}`);
+        }
+        logger.info(`   📁 Mock 目录: ${apifoxConfig.mockDir}`);
+        logger.info(`   📊 已加载路由: ${routes.length} 个`);
+      } else {
+        // 纯 proxy 模式：仅在存在 mockRoutes 时提示本地 Mock 目录和路由数
+        logger.info(`   🎯 目标服务器: ${mockConfig.target}`);
+        if (mockConfig.mockRoutes?.length) {
+          logger.info(`   📁 Mock 目录: ${apifoxConfig.mockDir}`);
+          logger.info(`   📊 已加载路由: ${routes.length} 个`);
+        }
+      }
       logger.info('\n💡 提示:');
       logger.info('  - 🔥 热重载已启用，修改 Mock 文件将自动生效');
       logger.info('  - 🛑 按 Ctrl+C 停止服务器\n');

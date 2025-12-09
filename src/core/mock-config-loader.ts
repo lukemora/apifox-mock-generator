@@ -21,6 +21,9 @@ export interface MockConfig {
   // 远程目标支持
   remoteTarget: boolean;
 
+  // 需要从请求路径中去掉的前缀（例如 VITE_API_BASE_URL = '/api' 时），单项目通常只配置一个
+  pathPrefixes?: string | string[];
+
   // 可选：按路由粒度控制模式（无需在 mock 文件里写 check 函数）
   // 优先级：URL 参数 > mockRoutes/proxyRoutes > model
   /** 需要强制使用 Mock 的路由，匹配 path 或 "METHOD path"，如：'/auth/login' 或 'POST /auth/login' */

@@ -208,15 +208,16 @@ const login = async (
 
 #### 配置选项说明
 
-| 参数           | 类型       | 默认值  | 说明                                                    |
-| -------------- | ---------- | ------- | ------------------------------------------------------- |
-| `model`        | `string`   | `mock`  | 工作模式：`mock`（本地数据）或 `proxy`（代理到远程）    |
-| `https`        | `boolean`  | `false` | 是否开启 HTTPS                                          |
-| `port`         | `number`   | `10000` | Mock 服务器端口                                         |
-| `target`       | `string`   | -       | 远程服务器目标地址（代理模式使用）                      |
-| `remoteTarget` | `boolean`  | `true`  | 是否支持页面 URL 参数控制（`?remote=mock/https://xxx`） |
-| `mockRoutes`   | `string[]` | `[]`    | 强制使用 Mock 的路由列表（可选）                        |
-| `proxyRoutes`  | `string[]` | `[]`    | 强制使用 Proxy 的路由列表（可选）                       |
+| 参数           | 类型                 | 默认值  | 说明                                                    |
+| -------------- | -------------------- | ------- | ------------------------------------------------------- |
+| `model`        | `string`             | `mock`  | 工作模式：`mock`（本地数据）或 `proxy`（代理到远程）    |
+| `https`        | `boolean`            | `false` | 是否开启 HTTPS                                          |
+| `port`         | `number`             | `10000` | Mock 服务器端口                                         |
+| `target`       | `string`             | -       | 远程服务器目标地址（代理模式使用）                      |
+| `remoteTarget` | `boolean`            | `true`  | 是否支持页面 URL 参数控制（`?remote=mock/https://xxx`） |
+| `pathPrefixes` | `string \| string[]` | -       | 请求路径前缀（用于处理生成路径与真实请求的前缀差异）    |
+| `mockRoutes`   | `string[]`           | `[]`    | 强制使用 Mock 的路由列表（可选）                        |
+| `proxyRoutes`  | `string[]`           | `[]`    | 强制使用 Proxy 的路由列表（可选）                       |
 
 #### 工作模式说明
 

@@ -24,6 +24,8 @@ export class RouteHandler {
    */
   async handleRequest(req: any, res: any): Promise<boolean> {
     try {
+      const { normalizedPath } = this.normalizePath(req.path);
+
       // 1) remote 参数：从页面 Referer 中解析 ?remote
       let remoteOverride: { mode?: 'mock' | 'proxy'; target?: string } | undefined;
       if (this.config.remoteTarget) {
@@ -45,7 +47,7 @@ export class RouteHandler {
       }
 
       // 2) mockRoutes/proxyRoutes（按接口粒度）
-      const ruleMode = this.pickModeByRoutes(req.method, req.path);
+      const ruleMode = this.pickModeByRoutes(req.method, req.path, normalizedPath);
 
       // 3) 计算最终模式：remote > mockRoutes/proxyRoutes > config.model
       const finalMode: 'mock' | 'proxy' =
@@ -59,7 +61,7 @@ export class RouteHandler {
         }
         return await this.handleProxyRequest(req, res);
       }
-      return await this.handleMockRequest(req, res);
+      return await this.handleMockRequest(req, res, normalizedPath);
     } catch (error) {
       logger.error(`请求处理失败: ${error instanceof Error ? error.message : '未知错误'}`);
       return false;
@@ -109,22 +111,36 @@ export class RouteHandler {
   /**
    * 处理 Mock 请求（纯 Mock 模式）
    */
-  private async handleMockRequest(req: any, res: any): Promise<boolean> {
-    const route = findMatchingRoute(this.routeManager.getAllRoutes(), req.method, req.path);
+  private async handleMockRequest(req: any, res: any, normalizedPath: string): Promise<boolean> {
+    let matchedPath = req.path;
+    let route = findMatchingRoute(this.routeManager.getAllRoutes(), req.method, req.path);
+
+    if (!route && normalizedPath && normalizedPath !== req.path) {
+      route = findMatchingRoute(this.routeManager.getAllRoutes(), req.method, normalizedPath);
+      matchedPath = normalizedPath;
+    }
 
     if (!route) {
-      logger.warn(`Mock 模式：未找到路由 ${req.method} ${req.path}`);
+      logger.warn(`Mock 模式：未找到路由 ${req.method} ${normalizedPath}`);
       return false;
     }
 
-    return await this.executeMockRoute(route, req, res);
+    return await this.executeMockRoute(route, req, res, matchedPath);
   }
 
   /**
    * 路由匹配：精确匹配 path 或 "METHOD path"
    */
-  private pickModeByRoutes(method: string, path: string): 'mock' | 'proxy' | undefined {
-    const candidateKeys = [path, `${method.toUpperCase()} ${path}`];
+  private pickModeByRoutes(
+    method: string,
+    path: string,
+    normalizedPath: string
+  ): 'mock' | 'proxy' | undefined {
+    const paths = [path];
+    if (normalizedPath && normalizedPath !== path) {
+      paths.push(normalizedPath);
+    }
+    const candidateKeys = paths.flatMap(p => [p, `${method.toUpperCase()} ${p}`]);
 
     const match = (routes?: string[]): boolean => {
       if (!routes || routes.length === 0) return false;
@@ -139,10 +155,15 @@ export class RouteHandler {
   /**
    * 执行 Mock 路由
    */
-  private async executeMockRoute(route: any, req: any, res: any): Promise<boolean> {
+  private async executeMockRoute(
+    route: any,
+    req: any,
+    res: any,
+    normalizedPath: string
+  ): Promise<boolean> {
     try {
       // 提取路径参数
-      const params = extractPathParams(route.path, req.path);
+      const params = extractPathParams(route.path, normalizedPath);
       req.params = params;
 
       // 参数校验
@@ -187,5 +208,35 @@ export class RouteHandler {
       });
       return true;
     }
+  }
+
+  /**
+   * 标准化请求路径：若配置了 pathPrefixes（单个前缀为主），尝试去掉该前缀以兼容无前缀的路由
+   */
+  private normalizePath(path: string): { normalizedPath: string; matchedPrefix?: string } {
+    const prefixes = this.config.pathPrefixes
+      ? Array.isArray(this.config.pathPrefixes)
+        ? this.config.pathPrefixes
+        : [this.config.pathPrefixes]
+      : [];
+
+    if (prefixes.length === 0) {
+      return { normalizedPath: path };
+    }
+
+    for (const rawPrefix of prefixes) {
+      if (!rawPrefix) continue;
+      // 规范化：确保有前导斜杠，移除末尾斜杠
+      const prefix = rawPrefix.startsWith('/') ? rawPrefix : `/${rawPrefix}`;
+      const normalizedPrefix = prefix.replace(/\/+$/, '');
+
+      if (normalizedPrefix && normalizedPrefix !== '/' && path.startsWith(normalizedPrefix)) {
+        const normalizedPath =
+          path === normalizedPrefix ? '/' : path.slice(normalizedPrefix.length) || '/';
+        return { normalizedPath, matchedPrefix: normalizedPrefix };
+      }
+    }
+
+    return { normalizedPath: path };
   }
 }

@@ -65,19 +65,21 @@ export function setupHotReload(
       // 清除该文件的模块缓存
       clearModuleCache(filePath);
 
-      const result = await loadRouteFromFile(filePath, mockDir, config, mockConfig);
-      if (result) {
-        routeManager.setRoute(result.key, result.route);
-        logger.success(`✅ 热重载成功: ${result.key}`);
+      const results = await loadRouteFromFile(filePath, mockDir, config, mockConfig);
+      if (results && results.length > 0) {
+        results.forEach(result => {
+          routeManager.setRoute(result.key, result.route);
+          logger.success(`✅ 热重载成功: ${result.key}`);
 
-        // 显示路由的详细信息
-        const routeInfo = result.route;
-        const methodName =
-          routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
-        const checkFunctionName = `check${methodName}`;
-        logger.info(`   📍 路由: ${routeInfo.method} ${routeInfo.path}`);
-        logger.info(`   🔧 检查函数: ${checkFunctionName}`);
-        logger.info(`   🎯 数据源: ${mockConfig.target || '本地Mock'}`);
+          // 显示路由的详细信息
+          const routeInfo = result.route;
+          const methodName =
+            routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
+          const checkFunctionName = `check${methodName}`;
+          logger.info(`   📍 路由: ${routeInfo.method} ${routeInfo.path}`);
+          logger.info(`   🔧 检查函数: ${checkFunctionName}`);
+          logger.info(`   🎯 数据源: ${mockConfig.target || '本地Mock'}`);
+        });
       } else {
         logger.warn(`⚠️  无法从修改的文件加载路由: ${relativePath}`);
       }
@@ -90,10 +92,12 @@ export function setupHotReload(
     .on('add', async filePath => {
       logger.info(`📝 检测到新文件: ${path.relative(mockDir, filePath)}`);
       try {
-        const result = await loadRouteFromFile(filePath, mockDir, config, mockConfig);
-        if (result) {
-          routeManager.setRoute(result.key, result.route);
-          logger.success(`✓ 已加载路由: ${result.key}`);
+        const results = await loadRouteFromFile(filePath, mockDir, config, mockConfig);
+        if (results && results.length > 0) {
+          results.forEach(result => {
+            routeManager.setRoute(result.key, result.route);
+            logger.success(`✓ 已加载路由: ${result.key}`);
+          });
         } else {
           logger.warn(`⚠️  无法从文件加载路由: ${path.relative(mockDir, filePath)}`);
         }
@@ -108,11 +112,13 @@ export function setupHotReload(
         // 清除该文件的模块缓存
         clearModuleCache(filePath);
 
-        const result = await loadRouteFromFile(filePath, mockDir, config, mockConfig);
-        if (result) {
-          routeManager.setRoute(result.key, result.route);
-          logger.success(`✓ 已更新路由: ${result.key}`);
-          console.log(`[热重载] 路由已更新: ${result.key}`);
+        const results = await loadRouteFromFile(filePath, mockDir, config, mockConfig);
+        if (results && results.length > 0) {
+          results.forEach(result => {
+            routeManager.setRoute(result.key, result.route);
+            logger.success(`✓ 已更新路由: ${result.key}`);
+            console.log(`[热重载] 路由已更新: ${result.key}`);
+          });
         } else {
           logger.warn(`⚠️  无法从修改的文件加载路由: ${path.relative(mockDir, filePath)}`);
         }

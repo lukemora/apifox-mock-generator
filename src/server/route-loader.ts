@@ -98,17 +98,22 @@ export async function loadMockRoutes(
         // 获取实际的函数名（如果存在）
         const actualFunctionName = handlerFunction.name || methodName;
 
-        routes.push({
-          path: routeInfo.path,
-          method: routeInfo.method,
-          response: async (req: express.Request) => {
-            // 直接使用本地 Mock 数据
-            logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
-            return handlerFunction(req.query, req.body, { req });
-          }
-        });
+        // 生成带前缀的路由变体（例如补上 VITE_API_BASE_URL）
+        const routePaths = buildRouteVariants(routeInfo.path, mockConfig.pathPrefixes);
 
-        logger.debug(`加载路由: ${routeInfo.method} ${routeInfo.path}`);
+        for (const routePath of routePaths) {
+          routes.push({
+            path: routePath,
+            method: routeInfo.method,
+            response: async (req: express.Request) => {
+              // 直接使用本地 Mock 数据
+              logger.debug(`使用本地 Mock 数据: ${routeInfo.method} ${routePath}`);
+              return handlerFunction(req.query, req.body, { req });
+            }
+          });
+
+          logger.debug(`加载路由: ${routeInfo.method} ${routePath}`);
+        }
       }
     } catch (error) {
       logger.error(`加载 Mock 文件失败: ${filePath}`);
@@ -127,7 +132,7 @@ export async function loadRouteFromFile(
   mockDir: string,
   config: ApifoxConfig,
   mockConfig: MockConfig
-): Promise<{ key: string; route: MockRoute } | null> {
+): Promise<Array<{ key: string; route: MockRoute }> | null> {
   try {
     const { RemoteProxy } = await import('./remote-proxy.js');
     const remoteProxy = new RemoteProxy(mockConfig!);
@@ -169,54 +174,92 @@ export async function loadRouteFromFile(
     // 获取实际的函数名（如果存在）
     const actualFunctionName = handlerFunction.name || methodName;
 
-    const key = `${routeInfo.method} ${routeInfo.path}`;
-    const route: MockRoute = {
-      path: routeInfo.path,
-      method: routeInfo.method,
-      response: (req: express.Request) => {
-        // 每次请求时都重新读取文件并导入最新版本
-        return (async () => {
-          try {
-            const latestVersion = moduleCache.get(filePath) || version;
-            const cacheBuster = `?v=${latestVersion}&t=${Date.now()}&r=${Math.random()}`;
-            const latestModule = await import(fileUrl + cacheBuster);
-            // 使用与初始加载相同的逻辑来查找处理函数
-            const methodName =
-              routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
+    const routePaths = buildRouteVariants(routeInfo.path, mockConfig.pathPrefixes);
+    const results: Array<{ key: string; route: MockRoute }> = [];
 
-            // 改进的函数查找逻辑（与 loadMockRoutes 保持一致）
-            const latestHandler =
-              latestModule[methodName] ||
-              Object.values(latestModule).find(
-                exp => typeof exp === 'function' && exp.name && exp.name.startsWith(methodName)
-              ) ||
-              latestModule[`${methodName}Role`] ||
-              latestModule.default;
+    for (const routePath of routePaths) {
+      const key = `${routeInfo.method} ${routePath}`;
+      const route: MockRoute = {
+        path: routePath,
+        method: routeInfo.method,
+        response: (req: express.Request) => {
+          // 每次请求时都重新读取文件并导入最新版本
+          return (async () => {
+            try {
+              const latestVersion = moduleCache.get(filePath) || version;
+              const cacheBuster = `?v=${latestVersion}&t=${Date.now()}&r=${Math.random()}`;
+              const latestModule = await import(fileUrl + cacheBuster);
+              // 使用与初始加载相同的逻辑来查找处理函数
+              const methodName =
+                routeInfo.method.charAt(0).toUpperCase() + routeInfo.method.slice(1).toLowerCase();
 
-            if (!latestHandler || typeof latestHandler !== 'function') {
+              // 改进的函数查找逻辑（与 loadMockRoutes 保持一致）
+              const latestHandler =
+                latestModule[methodName] ||
+                Object.values(latestModule).find(
+                  exp => typeof exp === 'function' && exp.name && exp.name.startsWith(methodName)
+                ) ||
+                latestModule[`${methodName}Role`] ||
+                latestModule.default;
+
+              if (!latestHandler || typeof latestHandler !== 'function') {
+                return handlerFunction(req.query, req.body, { req });
+              }
+
+              // 直接使用本地 Mock 数据
+              logger.debug(`热重载 - 使用本地 Mock 数据: ${routeInfo.method} ${routePath}`);
+              return latestHandler(req.query, req.body, { req });
+            } catch (err) {
+              // 失败时使用原始函数
+              logger.error(
+                `热重载失败，使用原始函数: ${err instanceof Error ? err.message : '未知错误'}`
+              );
               return handlerFunction(req.query, req.body, { req });
             }
+          })();
+        }
+      };
 
-            // 直接使用本地 Mock 数据
-            logger.debug(`热重载 - 使用本地 Mock 数据: ${routeInfo.method} ${routeInfo.path}`);
-            return latestHandler(req.query, req.body, { req });
-          } catch (err) {
-            // 失败时使用原始函数
-            logger.error(
-              `热重载失败，使用原始函数: ${err instanceof Error ? err.message : '未知错误'}`
-            );
-            return handlerFunction(req.query, req.body, { req });
-          }
-        })();
-      }
-    };
+      results.push({ key, route });
+    }
 
-    return { key, route };
+    return results;
   } catch (error) {
     logger.error(`加载 Mock 文件失败: ${filePath}`);
     console.error(error);
     return null;
   }
+}
+
+/**
+ * 根据配置生成路由变体（原始路径 + 前缀路径）
+ */
+function toPrefixArray(prefixes?: string | string[]): string[] {
+  if (!prefixes) return [];
+  return (Array.isArray(prefixes) ? prefixes : [prefixes]).filter(Boolean);
+}
+
+function buildRouteVariants(path: string, prefixes?: string | string[]): string[] {
+  const normalizedPrefixes = toPrefixArray(prefixes);
+  const variants = new Set<string>();
+
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  if (normalizedPrefixes.length === 0) {
+    variants.add(normalizedPath);
+  } else {
+    for (const rawPrefix of normalizedPrefixes) {
+      const prefix = rawPrefix.startsWith('/') ? rawPrefix : `/${rawPrefix}`;
+      const normalizedPrefix = prefix.replace(/\/+$/, '');
+      if (!normalizedPrefix || normalizedPrefix === '/') {
+        variants.add(normalizedPath);
+      } else {
+        variants.add(`${normalizedPrefix}${normalizedPath}`);
+      }
+    }
+  }
+
+  return Array.from(variants);
 }
 
 /**
