@@ -8,6 +8,9 @@ export function findMatchingRoute(
   method: string,
   path: string
 ): MockRoute | undefined {
+  // 去掉查询参数和哈希
+  const pathWithoutQuery = path.split('?')[0].split('#')[0];
+  
   return routes.find(route => {
     if (route.method.toUpperCase() !== method.toUpperCase()) {
       return false;
@@ -17,7 +20,7 @@ export function findMatchingRoute(
     const pattern = route.path.replace(/\{(\w+)\}/g, '([^/]+)');
     const regex = new RegExp(`^${pattern}$`);
 
-    return regex.test(path);
+    return regex.test(pathWithoutQuery);
   });
 }
 

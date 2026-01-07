@@ -15,6 +15,9 @@
     "dev:generate": "tsx src/scripts/generate-mock.ts",
     "dev:serve": "tsx src/scripts/serve-mock.ts",
     "dev:full": "npm run dev:generate && npm run dev:serve",
+    "test:e2e": "vitest run tests/e2e",
+    "test:e2e:config": "vitest run tests/e2e/apifox-config.e2e.test.ts tests/e2e/generated-files.e2e.test.ts",
+    "test:e2e:mock": "vitest run tests/e2e/mock-config.e2e.test.ts tests/e2e/mock-server.e2e.test.ts",
     "prepublishOnly": "npm run build"
   },
   "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
@@ -43,7 +46,8 @@
     "eslint-plugin-vue": "^10.5.1",
     "glob": "^11.0.3",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.0"
   },
   "peerDependencies": {
     "lodash": "^4.17.21",
