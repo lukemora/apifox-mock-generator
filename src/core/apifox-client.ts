@@ -2,6 +2,8 @@ import axios from 'axios';
 import * as https from 'https';
 import { logger } from '../utils/logger.js';
 import { saveOpenAPIData } from '../utils/file-utils.js';
+import { NetworkError, ApifoxApiError } from './errors.js';
+import { ERROR_CODES } from './error-codes.js';
 import type { ApifoxConfig } from '../types/index.js';
 import type { OpenAPIDocument } from '../types/openapi.js';
 
@@ -39,8 +41,7 @@ export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<Open
 
     return response.data as OpenAPIDocument;
   } catch (error) {
-    handleApifoxError(error);
-    throw error;
+    throw convertToApifoxError(error, config);
   }
 }
 
@@ -108,39 +109,83 @@ function buildRequestBody(config: ApifoxConfig): ApifoxExportRequestBody {
 }
 
 /**
- * 处理 Apifox API 错误
+ * 将错误转换为 Apifox 错误类型
  */
-function handleApifoxError(error: unknown): void {
+function convertToApifoxError(error: unknown, config: ApifoxConfig): NetworkError | ApifoxApiError {
   // 网络连接错误处理
   if (axios.isAxiosError(error)) {
+    // 网络连接失败
     if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-      logger.errorSimple('网络连接失败，无法连接到 api.apifox.com');
-      logger.info('请检查网络连接或代理设置');
-      return;
+      return new NetworkError('网络连接失败，无法连接到 api.apifox.com', {
+        code: ERROR_CODES.NETWORK_CONNECTION_FAILED,
+        apiUrl: config.apiUrl || 'https://api.apifox.com',
+        suggestion: '请检查网络连接或代理设置'
+      }, error);
     }
 
+    // 超时错误
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      return new NetworkError('请求超时', {
+        code: ERROR_CODES.NETWORK_TIMEOUT,
+        apiUrl: config.apiUrl || 'https://api.apifox.com',
+        timeout: 30000
+      }, error);
+    }
+
+    // HTTP 响应错误
     if (error.response) {
       const errorData = error.response.data as { errorCode?: string; message?: string };
+      const statusCode = error.response.status;
 
-      if (error.response.status === 403 && errorData?.errorCode === '403012') {
-        logger.errorSimple('权限不足: 当前 Access Token 没有「项目维护者」权限');
-        logger.info('请在 Apifox 中更新 Token 权限');
-      } else if (error.response.status === 401) {
-        logger.errorSimple('认证失败: Access Token 无效或已过期');
-        logger.info('请检查 apifox.config.json 中的 token 配置');
-      } else {
-        logger.errorSimple(`API 请求失败 (HTTP ${error.response.status})`);
-        if (errorData?.message) {
-          logger.info(`错误详情: ${errorData.message}`);
-        }
+      if (statusCode === 401) {
+        return new ApifoxApiError(
+          '认证失败: Access Token 无效或已过期',
+          statusCode,
+          ERROR_CODES.APIFOX_API_AUTH_FAILED,
+          {
+            code: ERROR_CODES.APIFOX_API_AUTH_FAILED,
+            suggestion: '请检查 apifox.config.json 中的 token 配置'
+          },
+          error
+        );
       }
-      return;
+
+      if (statusCode === 403 && errorData?.errorCode === '403012') {
+        return new ApifoxApiError(
+          '权限不足: 当前 Access Token 没有「项目维护者」权限',
+          statusCode,
+          '403012',
+          {
+            code: ERROR_CODES.APIFOX_API_PERMISSION_DENIED,
+            apiErrorCode: '403012',
+            suggestion: '请在 Apifox 中更新 Token 权限'
+          },
+          error
+        );
+      }
+
+      return new ApifoxApiError(
+        `API 请求失败 (HTTP ${statusCode})`,
+        statusCode,
+        errorData?.errorCode,
+        {
+          code: ERROR_CODES.APIFOX_API_REQUEST_FAILED,
+          statusCode,
+          apiErrorCode: errorData?.errorCode,
+          message: errorData?.message
+        },
+        error
+      );
     }
   }
 
-  // 其他类型的错误
-  logger.errorSimple('从 Apifox 拉取 API 数据失败');
-  if (error instanceof Error && !axios.isAxiosError(error)) {
-    logger.info(error.message);
-  }
+  // 其他类型的错误，转换为网络错误
+  return new NetworkError(
+    '从 Apifox 拉取 API 数据失败',
+    {
+      code: ERROR_CODES.NETWORK_CONNECTION_FAILED,
+      originalError: error instanceof Error ? error.message : '未知错误'
+    },
+    error instanceof Error ? error : undefined
+  );
 }

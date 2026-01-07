@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { logger } from '../utils/logger.js';
 import { RouteHandler } from './route-handler.js';
+import { ApifoxError } from '../core/errors.js';
+import { ERROR_TO_HTTP_STATUS } from '../core/error-codes.js';
 import type { RouteManager } from './route-manager.js';
 import type { MockConfig } from '../core/mock-config-loader.js';
 
@@ -49,8 +51,23 @@ export function setupMockServer(
     });
   });
 
-  // 错误处理
+  // 错误处理中间件
   app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // 如果是 ApifoxError，使用统一的错误响应格式
+    if (err instanceof ApifoxError) {
+      const statusCode = ERROR_TO_HTTP_STATUS[err.code] || 500;
+      logger.error(`[${err.code}] ${err.message}`);
+      
+      res.status(statusCode).json({
+        code: statusCode,
+        errorCode: err.code,
+        message: err.message,
+        details: err.details
+      });
+      return;
+    }
+
+    // 其他类型的错误
     logger.error(`服务器错误: ${err.message}`);
     res.status(500).json({
       code: 500,

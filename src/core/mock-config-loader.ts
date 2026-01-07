@@ -1,6 +1,7 @@
 import path from 'path';
 import { fileHelper } from '../utils/file-helper.js';
-import { logger } from '../utils/logger.js';
+import { ConfigError } from './errors.js';
+import { ERROR_CODES } from './error-codes.js';
 
 /**
  * Mock 配置接口
@@ -40,8 +41,11 @@ export async function loadMockConfig(): Promise<MockConfig> {
   const jsConfigPath = path.join(projectRoot, 'mock.config.js');
 
   if (!(await fileHelper.exists(jsConfigPath))) {
-    logger.error('未找到 mock.config.js 配置文件');
-    process.exit(1);
+    throw new ConfigError('未找到 mock.config.js 配置文件', {
+      code: ERROR_CODES.CONFIG_FILE_NOT_FOUND,
+      path: jsConfigPath,
+      suggestion: '请先运行 npm run generate 生成 Mock 文件'
+    });
   }
 
   try {
@@ -54,12 +58,21 @@ export async function loadMockConfig(): Promise<MockConfig> {
     const config = configModule.default || configModule;
 
     if (typeof config !== 'object' || config === null) {
-      throw new Error('Mock 配置文件必须导出对象');
+      throw new ConfigError('Mock 配置文件必须导出对象', {
+        code: ERROR_CODES.CONFIG_INVALID_FORMAT,
+        path: jsConfigPath
+      });
     }
 
     return config as MockConfig;
   } catch (error) {
-    logger.error(`Mock 配置加载失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    process.exit(1);
+    if (error instanceof ConfigError) {
+      throw error;
+    }
+    throw new ConfigError('Mock 配置加载失败', {
+      code: ERROR_CODES.CONFIG_INVALID_FORMAT,
+      path: jsConfigPath,
+      originalError: error instanceof Error ? error.message : '未知错误'
+    }, error instanceof Error ? error : undefined);
   }
 }

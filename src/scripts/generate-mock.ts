@@ -5,6 +5,7 @@ import { convertOpenAPIToEndpoints } from '../core/openapi-converter.js';
 import { filterEndpoints } from '../core/endpoint-filter.js';
 import { generateMockFiles } from '../generators/mock-generator.js';
 import { generateTypeFiles } from '../generators/type-generator.js';
+import { ApifoxError, ConfigError, NetworkError, ApifoxApiError } from '../core/errors.js';
 
 /**
  * 主函数
@@ -56,14 +57,37 @@ async function main() {
 
     logger.success('\n✨ 所有文件生成完成！');
   } catch (error) {
-    // 避免重复显示错误信息
-    if (
-      error instanceof Error &&
-      !error.message.includes('网络连接失败') &&
-      !error.message.includes('API 请求失败')
-    ) {
-      logger.error('生成失败');
-      console.error(error);
+    // 处理不同类型的错误
+    if (error instanceof ConfigError) {
+      logger.error(`❌ 配置错误: ${error.message}`);
+      if (error.details?.suggestion) {
+        logger.info(`💡 建议: ${error.details.suggestion}`);
+      }
+      if (error.details?.path) {
+        logger.info(`📁 配置文件路径: ${error.details.path}`);
+      }
+    } else if (error instanceof NetworkError) {
+      logger.error(`❌ 网络错误: ${error.message}`);
+      if (error.details?.suggestion) {
+        logger.info(`💡 建议: ${error.details.suggestion}`);
+      }
+    } else if (error instanceof ApifoxApiError) {
+      logger.error(`❌ Apifox API 错误: ${error.message}`);
+      if (error.details?.suggestion) {
+        logger.info(`💡 建议: ${error.details.suggestion}`);
+      }
+    } else if (error instanceof ApifoxError) {
+      logger.error(`❌ ${error.name}: ${error.message}`);
+      if (error.details) {
+        logger.info(`详情: ${JSON.stringify(error.details, null, 2)}`);
+      }
+    } else {
+      logger.error('❌ 生成失败');
+      if (error instanceof Error) {
+        console.error(error);
+      } else {
+        console.error('未知错误:', error);
+      }
     }
     process.exit(1);
   }

@@ -5,6 +5,7 @@ import { RouteManager } from '../server/route-manager.js';
 import { loadMockRoutes } from '../server/route-loader.js';
 import { setupMockServer } from '../server/express-server.js';
 import { setupHotReload } from '../server/hot-reload.js';
+import { ApifoxError, ConfigError } from '../core/errors.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -102,9 +103,27 @@ async function main() {
       setupHotReload(apifoxConfig, routeManager, mockConfig);
     });
   } catch (error) {
-    logger.error('启动失败');
-    if (error instanceof Error) {
-      console.error(error);
+    // 处理不同类型的错误
+    if (error instanceof ConfigError) {
+      logger.error(`❌ 配置错误: ${error.message}`);
+      if (error.details?.suggestion) {
+        logger.info(`💡 建议: ${error.details.suggestion}`);
+      }
+      if (error.details?.path) {
+        logger.info(`📁 配置文件路径: ${error.details.path}`);
+      }
+    } else if (error instanceof ApifoxError) {
+      logger.error(`❌ ${error.name}: ${error.message}`);
+      if (error.details) {
+        logger.info(`详情: ${JSON.stringify(error.details, null, 2)}`);
+      }
+    } else {
+      logger.error('❌ 启动失败');
+      if (error instanceof Error) {
+        console.error(error);
+      } else {
+        console.error('未知错误:', error);
+      }
     }
     process.exit(1);
   }
