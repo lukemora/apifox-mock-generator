@@ -4,7 +4,7 @@ import type { ApiEndpoint, ApiFilter } from '../types/index.js';
 /**
  * 中文状态到英文状态的映射
  */
-const STATUS_MAPPING: Record<string, string> = {
+export const STATUS_MAPPING: Record<string, string> = {
   设计中: 'designing',
   开发中: 'developing',
   已完成: 'completed',
@@ -73,7 +73,8 @@ export function filterEndpoints(endpoints: ApiEndpoint[], filter?: ApiFilter): A
 
     // 4. 检查 includeMethods（如果配置了，必须匹配）
     if (filter.includeMethods && filter.includeMethods.length > 0) {
-      if (!filter.includeMethods.includes(endpoint.method.toUpperCase())) {
+      const includeMethodsUpper = filter.includeMethods.map(m => m.toUpperCase());
+      if (!includeMethodsUpper.includes(endpoint.method.toUpperCase())) {
         logger.debug(`[Filter] 方法不匹配 includeMethods: ${endpoint.method}`);
         return false;
       }
@@ -81,7 +82,8 @@ export function filterEndpoints(endpoints: ApiEndpoint[], filter?: ApiFilter): A
 
     // 5. 检查 excludeMethods（如果匹配，则排除）
     if (filter.excludeMethods && filter.excludeMethods.length > 0) {
-      if (filter.excludeMethods.includes(endpoint.method.toUpperCase())) {
+      const excludeMethodsUpper = filter.excludeMethods.map(m => m.toUpperCase());
+      if (excludeMethodsUpper.includes(endpoint.method.toUpperCase())) {
         logger.debug(`[Filter] 方法匹配 excludeMethods，已排除: ${endpoint.method}`);
         return false;
       }

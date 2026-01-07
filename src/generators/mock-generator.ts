@@ -20,7 +20,13 @@ export async function generateMockFiles(
 ): Promise<void> {
   logger.title('生成 Mock 文件...');
 
-  await fileHelper.ensureDir(config.mockDir);
+  // 将相对路径解析为基于项目根目录的绝对路径
+  const projectRoot = fileHelper.getProjectRoot();
+  const mockDir = path.isAbsolute(config.mockDir)
+    ? config.mockDir
+    : path.resolve(projectRoot, config.mockDir);
+
+  await fileHelper.ensureDir(mockDir);
 
   let generatedCount = 0;
 
@@ -28,7 +34,7 @@ export async function generateMockFiles(
   const groupedEndpoints = groupEndpointsByPath(endpoints);
 
   for (const [groupPath, groupEndpoints] of Object.entries(groupedEndpoints)) {
-    const mockFilePath = path.join(config.mockDir, `${groupPath}.js`);
+    const mockFilePath = path.join(mockDir, `${groupPath}.js`);
 
     // 确保文件所在目录存在
     const fileDir = path.dirname(mockFilePath);
