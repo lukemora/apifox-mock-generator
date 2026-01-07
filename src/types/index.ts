@@ -71,9 +71,9 @@ export interface ApiEndpoint {
   /** 参数列表 */
   parameters?: ApiParameter[];
   /** 请求体 */
-  requestBody?: any;
+  requestBody?: import('./openapi.js').OpenAPISchema | import('./openapi.js').OpenAPISchemaReference;
   /** 响应体 */
-  responseBody?: any;
+  responseBody?: import('./openapi.js').OpenAPISchema | import('./openapi.js').OpenAPISchemaReference;
   /** 文件夹路径 */
   folderPath?: string;
 }
@@ -91,7 +91,7 @@ export interface ApiParameter {
   /** 参数描述 */
   description?: string;
   /** 参数 schema 定义（包含枚举等信息） */
-  schema?: any;
+  schema?: import('./openapi.js').OpenAPISchema | import('./openapi.js').OpenAPISchemaReference;
 }
 
 // Mock 生成器配置类型
@@ -147,7 +147,7 @@ export interface ParamDefinition {
   /** 参数描述 */
   description?: string;
   /** 示例值 */
-  example?: any;
+  example?: unknown;
 }
 
 // 类型定义（支持嵌套）
@@ -161,7 +161,7 @@ export interface TypeDefinition {
   /** 枚举值（当 type 为 string 时） */
   enum?: string[];
   /** 示例值 */
-  example?: any;
+  example?: unknown;
   /** 类型描述 */
   description?: string;
 }
@@ -176,6 +176,6 @@ export interface PropertyDefinition extends TypeDefinition {
 export interface MockRoute {
   path: string;
   method: string;
-  response: any;
+  response: unknown;
   status?: number;
 }

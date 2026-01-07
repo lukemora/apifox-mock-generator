@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from './logger.js';
+import type { OpenAPIDocument } from '../types/openapi.js';
 
 /**
  * 检查是否作为 npm 依赖被使用
@@ -18,7 +19,7 @@ function isRunningAsNpmDependency(): boolean {
  * @param openapiData OpenAPI 数据
  * @param projectId 项目 ID
  */
-export function saveOpenAPIData(openapiData: any, projectId: string): void {
+export function saveOpenAPIData(openapiData: OpenAPIDocument, projectId: string): void {
   // 如果作为 npm 依赖使用，不生成日志文件
   if (isRunningAsNpmDependency()) {
     return;
@@ -51,7 +52,7 @@ export function saveOpenAPIData(openapiData: any, projectId: string): void {
  * @param data 调试数据
  * @param filename 文件名
  */
-export function saveDebugData(data: any, filename: string): void {
+export function saveDebugData(data: unknown, filename: string): void {
   // 如果作为 npm 依赖使用，不生成日志文件
   if (isRunningAsNpmDependency()) {
     return;

@@ -9,6 +9,7 @@ import {
   deduplicateImports
 } from './templates/file-architecture.js';
 import type { ApifoxConfig, ApiEndpoint } from '../types/index.js';
+import type { OpenAPISchema, OpenAPISchemaReference } from '../types/openapi.js';
 
 /**
  * 生成 Mock 文件（两步模式：先架构，后接口）
@@ -16,7 +17,7 @@ import type { ApifoxConfig, ApiEndpoint } from '../types/index.js';
 export async function generateMockFiles(
   config: ApifoxConfig,
   endpoints: ApiEndpoint[],
-  definitions?: any
+  definitions?: Record<string, OpenAPISchema | OpenAPISchemaReference>
 ): Promise<void> {
   logger.title('生成 Mock 文件...');
 

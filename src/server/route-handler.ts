@@ -1,5 +1,7 @@
+import type express from 'express';
 import type { MockConfig } from '../core/mock-config-loader.js';
 import type { RouteManager } from './route-manager.js';
+import type { MockRoute } from '../types/index.js';
 import { RemoteProxy } from './remote-proxy.js';
 import { findMatchingRoute, extractPathParams } from './route-matcher.js';
 import { validateRequest } from './validation.js';
@@ -22,7 +24,7 @@ export class RouteHandler {
   /**
    * 处理请求
    */
-  async handleRequest(req: any, res: any): Promise<boolean> {
+  async handleRequest(req: express.Request, res: express.Response): Promise<boolean> {
     try {
       const { normalizedPath } = this.normalizePath(req.path);
 
@@ -51,7 +53,7 @@ export class RouteHandler {
 
       // 3) 计算最终模式：remote > mockRoutes/proxyRoutes > config.model
       const finalMode: 'mock' | 'proxy' =
-        (remoteOverride?.mode as any) || (ruleMode as any) || this.config.model;
+        remoteOverride?.mode || ruleMode || this.config.model;
 
       // 5) 处理
       if (finalMode === 'proxy') {
@@ -71,7 +73,7 @@ export class RouteHandler {
   /**
    * 处理代理请求（纯代理模式）
    */
-  private async handleProxyRequest(req: any, res: any): Promise<boolean> {
+  private async handleProxyRequest(req: express.Request, res: express.Response): Promise<boolean> {
     try {
       const proxyResponse = await this.remoteProxy.proxyRequest(req);
 
@@ -142,7 +144,7 @@ export class RouteHandler {
   /**
    * 处理 Mock 请求（纯 Mock 模式）
    */
-  private async handleMockRequest(req: any, res: any, normalizedPath: string): Promise<boolean> {
+  private async handleMockRequest(req: express.Request, res: express.Response, normalizedPath: string): Promise<boolean> {
     let matchedPath = req.path;
     let route = findMatchingRoute(this.routeManager.getAllRoutes(), req.method, req.path);
 
@@ -187,9 +189,9 @@ export class RouteHandler {
    * 执行 Mock 路由
    */
   private async executeMockRoute(
-    route: any,
-    req: any,
-    res: any,
+    route: MockRoute,
+    req: express.Request,
+    res: express.Response,
     normalizedPath: string
   ): Promise<boolean> {
     try {

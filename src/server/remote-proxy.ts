@@ -16,10 +16,10 @@ export class RemoteProxy {
    * 代理请求到远程服务器
    * @returns 返回完整的响应对象，包括 status、headers、data
    */
-  async proxyRequest(req: any): Promise<{
+  async proxyRequest(req: import('express').Request): Promise<{
     status: number;
     headers: Record<string, string>;
-    data: any;
+    data: unknown;
   }> {
     const target = req.__overrideTarget || this.config.target;
     const remoteUrl = `${target.replace(/\/$/, '')}${req.path}`;

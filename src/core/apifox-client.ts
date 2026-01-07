@@ -3,11 +3,12 @@ import * as https from 'https';
 import { logger } from '../utils/logger.js';
 import { saveOpenAPIData } from '../utils/file-utils.js';
 import type { ApifoxConfig } from '../types/index.js';
+import type { OpenAPIDocument } from '../types/openapi.js';
 
 /**
  * 从 Apifox 拉取 OpenAPI 数据
  */
-export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<any> {
+export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<OpenAPIDocument> {
   logger.info('从 Apifox 拉取 API 数据...');
 
   try {
@@ -36,7 +37,7 @@ export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<any>
     // 保存 OpenAPI 数据到日志文件（仅在开发环境）
     saveOpenAPIData(response.data, config.projectId);
 
-    return response.data;
+    return response.data as OpenAPIDocument;
   } catch (error) {
     handleApifoxError(error);
     throw error;
@@ -44,10 +45,28 @@ export async function fetchOpenAPIFromApifox(config: ApifoxConfig): Promise<any>
 }
 
 /**
+ * Apifox API 请求体类型
+ */
+interface ApifoxExportRequestBody {
+  oasVersion: string;
+  exportFormat: 'JSON' | 'YAML';
+  branchId?: number;
+  scope?: {
+    type: 'ALL';
+    includedByTags?: string[];
+    folderPaths?: string[];
+  };
+  options?: {
+    includeApifoxExtensionProperties?: boolean;
+    addFoldersToTags?: boolean;
+  };
+}
+
+/**
  * 构建请求体
  */
-function buildRequestBody(config: ApifoxConfig): any {
-  const requestBody: any = {
+function buildRequestBody(config: ApifoxConfig): ApifoxExportRequestBody {
+  const requestBody: ApifoxExportRequestBody = {
     oasVersion: '3.0',
     exportFormat: 'JSON'
   };
@@ -60,7 +79,7 @@ function buildRequestBody(config: ApifoxConfig): any {
   // 应用过滤配置
   if (config.apiFilter) {
     if (config.apiFilter.scope) {
-      const scope: any = {
+      const scope: ApifoxExportRequestBody['scope'] = {
         // 写死为 ALL，导出所有接口，通过其他过滤条件进行筛选
         type: 'ALL'
       };
@@ -101,7 +120,7 @@ function handleApifoxError(error: unknown): void {
     }
 
     if (error.response) {
-      const errorData = error.response.data as any;
+      const errorData = error.response.data as { errorCode?: string; message?: string };
 
       if (error.response.status === 403 && errorData?.errorCode === '403012') {
         logger.errorSimple('权限不足: 当前 Access Token 没有「项目维护者」权限');

@@ -39,7 +39,7 @@ export async function readJson<T>(filePath: string): Promise<T> {
 /**
  * 写入 JSON 文件
  */
-export async function writeJson(filePath: string, data: any): Promise<void> {
+export async function writeJson(filePath: string, data: unknown): Promise<void> {
   const content = JSON.stringify(data, null, 2);
   await writeFile(filePath, content);
 }

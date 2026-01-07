@@ -1,13 +1,26 @@
 import type express from 'express';
+import type { OpenAPISchema, OpenAPISchemaReference } from '../types/openapi.js';
+
+/**
+ * 验证配置类型
+ */
+interface ValidationConfig {
+  params?: Record<string, { required?: boolean; type: string }>;
+  query?: Record<string, { required?: boolean; type: string }>;
+  body?: {
+    required?: boolean;
+    schema?: OpenAPISchema | OpenAPISchemaReference;
+  };
+}
 
 /**
  * 校验请求参数
  */
-export function validateRequest(req: express.Request, validation: any): string | null {
+export function validateRequest(req: express.Request, validation: ValidationConfig): string | null {
   // 校验路径参数
   if (validation.params && Object.keys(validation.params).length > 0) {
     for (const [key, config] of Object.entries(validation.params)) {
-      const paramConfig = config as any;
+      const paramConfig = config;
       if (paramConfig.required && !req.params[key]) {
         return `路径参数 '${key}' 是必填的`;
       }
@@ -20,7 +33,7 @@ export function validateRequest(req: express.Request, validation: any): string |
   // 校验查询参数
   if (validation.query && Object.keys(validation.query).length > 0) {
     for (const [key, config] of Object.entries(validation.query)) {
-      const queryConfig = config as any;
+      const queryConfig = config;
       if (queryConfig.required && !req.query[key]) {
         return `查询参数 '${key}' 是必填的`;
       }
@@ -50,7 +63,7 @@ export function validateRequest(req: express.Request, validation: any): string |
 /**
  * 校验数据类型
  */
-function validateType(value: any, expectedType: string): boolean {
+function validateType(value: unknown, expectedType: string): boolean {
   switch (expectedType) {
     case 'string':
       return typeof value === 'string';
@@ -67,7 +80,11 @@ function validateType(value: any, expectedType: string): boolean {
 /**
  * 校验请求体 schema
  */
-function validateSchema(data: any, schema: any, path: string = ''): string | null {
+function validateSchema(
+  data: unknown,
+  schema: OpenAPISchema | OpenAPISchemaReference,
+  path: string = ''
+): string | null {
   if (!schema) return null;
 
   // 对象类型
@@ -111,7 +128,7 @@ function validateSchema(data: any, schema: any, path: string = ''): string | nul
 /**
  * 校验基础类型
  */
-function validateBasicType(value: any, type: string): boolean {
+function validateBasicType(value: unknown, type: string): boolean {
   switch (type) {
     case 'string':
       return typeof value === 'string';

@@ -51,7 +51,7 @@ export function groupEndpointsByPath(endpoints: ApiEndpoint[]): Record<string, A
   const groups: Record<string, ApiEndpoint[]> = {};
 
   for (const endpoint of endpoints) {
-    const fileName = pathToFileName(endpoint.path, endpoint.method, (endpoint as any).operationId);
+    const fileName = pathToFileName(endpoint.path, endpoint.method, (endpoint as unknown as { operationId?: string }).operationId);
 
     // 提取资源路径（去除方法后缀）
     let resourcePath = fileName
