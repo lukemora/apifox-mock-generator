@@ -5,6 +5,109 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.0.0] - 2026-01-08
+
+### 🎯 重大更新
+
+这是一个重大版本更新，引入了全新的架构设计和多项核心功能改进。
+
+### ✨ 新增功能
+
+#### 🏗️ 项目架构重构
+
+- **依赖注入容器** - 引入依赖注入（DI）容器，优化服务注册和解析
+  - 实现基于接口的服务注册机制，提升代码解耦和可测试性
+  - 支持服务标识符常量管理，统一服务注册和解析
+  - 提供容器设置和初始化功能，简化依赖管理
+
+- **用例模式（Use Cases）** - 新增多个用例类，负责处理核心业务逻辑
+  - `FetchApifoxDataUseCase` - 处理从 Apifox 获取 OpenAPI 文档
+  - `GenerateMockUseCase` - 处理 Mock 文件生成
+  - `GenerateTypesUseCase` - 处理 TypeScript 类型生成
+  - `ServeMockUseCase` - 处理 Mock 服务器启动
+  - 每个用例专注于单一职责，提升代码可维护性
+
+- **领域驱动设计（DDD）架构** - 重构项目结构，采用分层架构
+  - **domain/** - 领域层：实体、服务接口、业务逻辑
+  - **application/** - 应用层：用例实现
+  - **infrastructure/** - 基础设施层：具体实现（文件系统、日志、HTTP 客户端等）
+  - **presentation/** - 表现层：HTTP 服务器、中间件等
+  - 清晰的层次划分，提升代码组织性和可维护性
+
+- **统一文件系统接口** - 实现统一的文件系统操作接口
+  - 新增 `IFileSystem` 接口和 `FileSystemImpl` 实现
+  - 替代原有的分散文件操作工具，统一文件操作方式
+  - 支持依赖注入，便于测试和替换
+
+#### 🛡️ 统一错误处理机制
+
+- **错误类体系** - 新增统一的错误处理类
+  - `ApifoxError` - 基础错误类
+  - `ConfigError` - 配置错误类
+  - `NetworkError` - 网络错误类
+  - `ApifoxApiError` - Apifox API 错误类
+  - 所有错误类支持详细的错误信息和建议
+
+- **错误码系统** - 引入错误码常量定义
+  - 统一的错误码管理（`ERROR_CODES`）
+  - 错误码到 HTTP 状态码的映射（`ERROR_TO_HTTP_STATUS`）
+  - 便于错误管理和调试
+
+- **错误处理中间件** - 新增 Express 错误处理中间件
+  - 统一的错误响应格式
+  - 自动转换错误码为 HTTP 状态码
+  - 提供详细的错误信息和建议
+
+#### 📝 类型安全增强
+
+- **OpenAPI 类型定义** - 引入完整的 OpenAPI 类型定义
+  - `OpenAPIDocument` - OpenAPI 文档类型
+  - `OpenAPISchema` - Schema 类型定义
+  - 将多个函数的参数和返回值类型从 `any` 修改为具体的 OpenAPI 类型
+  - 提升类型安全，减少类型不匹配的风险
+
+#### 🧪 测试支持
+
+- **E2E 测试框架** - 新增端到端测试支持
+  - 使用 Vitest 作为测试框架
+  - 支持配置测试、生成文件测试、Mock 服务器测试
+  - 提供测试辅助工具和帮助函数
+  - 新增测试脚本：`test:e2e`、`test:e2e:config`、`test:e2e:mock`
+
+### 🔄 重构改进
+
+- **路由管理器重构** - 将路由管理器迁移到基础设施层
+  - 实现 `IRouteManager` 接口
+  - 支持依赖注入，便于测试和替换
+
+- **日志系统重构** - 重构日志系统为接口实现
+  - 新增 `ILogger` 接口和 `ConsoleLoggerImpl` 实现
+  - 支持依赖注入，便于替换日志实现
+
+- **服务接口抽象** - 新增多个服务接口
+  - `IApifoxClient` - Apifox 客户端接口
+  - `IRouteManager` - 路由管理器接口
+  - `IFileSystem` - 文件系统接口
+  - `ILogger` - 日志接口
+  - `IHttpClient` - HTTP 客户端接口
+
+- **代码组织优化** - 优化代码组织结构
+  - 多个模块文件路径发生变化（内部重构，不影响用户使用）
+    - `src/server/` → `src/infrastructure/server/` 或 `src/presentation/http/`
+    - `src/utils/logger.ts` → `src/infrastructure/logger/console-logger.impl.ts`
+    - `src/utils/file-operations.ts` → `src/infrastructure/file-system/file-system.impl.ts`
+  - 移除不再使用的代码和模块
+  - 统一导出文件，简化导入路径
+  - 提升代码整洁度和可维护性
+  - 注意：这些是内部重构，用户通过配置文件（`apifox.config.json`、`mock.config.js`）和命令行工具使用，不受影响
+
+### 📖 文档更新
+
+- **架构设计文档** - 新增架构设计文档（`doc/ARCHITECTURE_DESIGN.md`）
+  - 提供项目整体结构说明
+  - 详细的功能模块介绍
+  - 依赖注入使用指南
+
 ## [1.4.6] - 2025-12-09
 
 ### 🐛 修复
