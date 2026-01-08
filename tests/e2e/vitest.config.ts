@@ -11,6 +11,13 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     teardownTimeout: 10000,
+    // 使用 fork 模式而不是线程模式，以支持 process.chdir()
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true, // 单进程运行，避免并发问题
+      },
+    },
   },
   resolve: {
     alias: {

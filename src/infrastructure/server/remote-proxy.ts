@@ -1,5 +1,5 @@
-import type { MockConfig } from '../core/mock-config-loader.js';
-import { logger } from '../utils/logger.js';
+import type { MockConfig } from '../../core/mock-config-loader.js';
+import { logger } from '../logger/console-logger.impl.js';
 import axios from 'axios';
 
 /**
@@ -23,7 +23,18 @@ export class RemoteProxy {
   }> {
     const target = req.__overrideTarget || this.config.target;
     const remoteUrl = `${target.replace(/\/$/, '')}${req.path}`;
-    const queryString = new URLSearchParams(req.query).toString();
+    // 转换 query 对象为 URLSearchParams
+    const queryParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(req.query)) {
+      if (value !== undefined && value !== null) {
+        if (Array.isArray(value)) {
+          value.forEach(v => queryParams.append(key, String(v)));
+        } else {
+          queryParams.append(key, String(value));
+        }
+      }
+    }
+    const queryString = queryParams.toString();
     const fullUrl = queryString ? `${remoteUrl}?${queryString}` : remoteUrl;
 
     logger.info(`🌐 代理请求到: ${fullUrl}`);

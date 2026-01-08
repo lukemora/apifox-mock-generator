@@ -1,64 +1,32 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { existsSync, readFileSync, readdirSync, rmSync } from 'fs';
+import { join, isAbsolute, resolve } from 'path';
 import { loadConfig } from '../../src/core/config-loader.js';
-import { fetchOpenAPIFromApifox } from '../../src/core/apifox-client.js';
-import { convertOpenAPIToEndpoints } from '../../src/core/openapi-converter.js';
-import { filterEndpoints } from '../../src/core/endpoint-filter.js';
+import { fetchOpenAPIFromApifox, convertOpenAPIToEndpoints, filterEndpoints } from './utils/test-api-helpers.js';
 import { generateMockFiles } from '../../src/generators/mock-generator.js';
 import { generateTypeFiles } from '../../src/generators/type-generator.js';
 import { TestHelpers } from './utils/test-helpers.js';
-import { getProjectRoot } from '../../src/utils/file-operations.js';
+import { FileSystemImpl } from '../../src/infrastructure/file-system/file-system.impl.js';
+
+const fileSystem = new FileSystemImpl();
 
 describe('生成文件验证', () => {
-  const mockDir = join(process.cwd(), 'test-mock');
-  const typesDir = join(process.cwd(), 'test-types');
-  const projectRoot = getProjectRoot();
-  const configPath = join(projectRoot, 'apifox.config.json');
+  const projectRoot = fileSystem.getProjectRoot();
+  let mockDir: string;
+  let typesDir: string;
+  let configPath: string;
   let config: any;
   let openapi: any;
   let endpoints: any[];
   let tempConfigCreated = false;
 
   beforeAll(async () => {
-    // 清理测试目录
-    if (existsSync(mockDir)) {
-      rmSync(mockDir, { recursive: true, force: true });
-    }
-    if (existsSync(typesDir)) {
-      rmSync(typesDir, { recursive: true, force: true });
-    }
+    // 直接创建临时配置文件
+    configPath = TestHelpers.createTempConfig({});
+    tempConfigCreated = true;
+    console.log(`✅ 已创建临时配置文件: ${configPath}\n`);
     
-    // 检查配置文件是否存在，如果不存在则创建临时配置文件
-    if (!existsSync(configPath)) {
-      console.warn(`\n⚠️  未找到配置文件: ${configPath}`);
-      console.warn(`💡 将创建临时配置文件用于测试\n`);
-      
-      // 尝试从环境变量读取配置，或使用默认测试配置
-      const defaultConfig = {
-        projectId: process.env.APIFOX_PROJECT_ID || '7219799',
-        token: process.env.APIFOX_TOKEN || 'APS-XQrLSqLE4q0FOb0bGhaqYvTxSUQQFPeO',
-        mockDir: './mock',
-        typesDir: './src/types/mock',
-        mockPort: 10000,
-        generate: 'all' as const,
-        apiFilter: {
-          scope: {
-            excludedByTags: ['设计中', '已废弃', '待确定', '将废弃'],
-            folderPaths: []
-          },
-          includePaths: [],
-          excludePaths: [],
-          includeMethods: []
-        }
-      };
-      
-      TestHelpers.createTempConfig({}, defaultConfig);
-      tempConfigCreated = true;
-      console.log(`✅ 已创建临时配置文件: ${configPath}\n`);
-    }
-    
-    // 生成测试文件
+    // 加载配置
     try {
       config = await loadConfig();
     } catch (error) {
@@ -67,6 +35,22 @@ describe('生成文件验证', () => {
       console.error(`当前工作目录: ${process.cwd()}`);
       console.error(`错误信息: ${error instanceof Error ? error.message : String(error)}\n`);
       throw error;
+    }
+    
+    // 从配置中读取路径并解析为绝对路径
+    mockDir = isAbsolute(config.mockDir)
+      ? config.mockDir
+      : resolve(projectRoot, config.mockDir);
+    typesDir = isAbsolute(config.typesDir)
+      ? config.typesDir
+      : resolve(projectRoot, config.typesDir);
+    
+    // 清理测试目录
+    if (existsSync(mockDir)) {
+      rmSync(mockDir, { recursive: true, force: true });
+    }
+    if (existsSync(typesDir)) {
+      rmSync(typesDir, { recursive: true, force: true });
     }
     // 使用测试目录
     const testConfig = {
@@ -86,32 +70,32 @@ describe('生成文件验证', () => {
 
   afterAll(() => {
     // 在删除前打印文件位置信息
-    if (existsSync(typesDir)) {
-      console.log(`\n⚠️  测试完成后将清理类型文件目录: ${typesDir}`);
-      console.log(`💡 如需保留文件，请手动复制到其他位置\n`);
-    }
-    if (existsSync(mockDir)) {
-      console.log(`⚠️  测试完成后将清理 Mock 文件目录: ${mockDir}`);
-      console.log(`💡 如需保留文件，请手动复制到其他位置\n`);
-    }
+    // if (existsSync(typesDir)) {
+    //   console.log(`\n⚠️  测试完成后将清理类型文件目录: ${typesDir}`);
+    //   console.log(`💡 如需保留文件，请手动复制到其他位置\n`);
+    // }
+    // if (existsSync(mockDir)) {
+    //   console.log(`⚠️  测试完成后将清理 Mock 文件目录: ${mockDir}`);
+    //   console.log(`💡 如需保留文件，请手动复制到其他位置\n`);
+    // }
 
     // 清理测试目录（可以通过环境变量控制是否清理）
-    if (process.env.KEEP_TEST_FILES !== 'true') {
-      if (existsSync(mockDir)) {
-        rmSync(mockDir, { recursive: true, force: true });
-      }
-      if (existsSync(typesDir)) {
-        rmSync(typesDir, { recursive: true, force: true });
-      }
-    } else {
-      console.log('✅ 已设置 KEEP_TEST_FILES=true，保留测试生成的文件');
-    }
+    // if (process.env.KEEP_TEST_FILES !== 'true') {
+    //   if (existsSync(mockDir)) {
+    //     rmSync(mockDir, { recursive: true, force: true });
+    //   }
+    //   if (existsSync(typesDir)) {
+    //     rmSync(typesDir, { recursive: true, force: true });
+    //   }
+    // } else {
+    //   console.log('✅ 已设置 KEEP_TEST_FILES=true，保留测试生成的文件');
+    // }
 
     // 清理临时创建的配置文件
-    if (tempConfigCreated && existsSync(configPath)) {
-      console.log(`\n🗑️  清理临时配置文件: ${configPath}`);
-      rmSync(configPath, { force: true });
-    }
+    // if (tempConfigCreated && existsSync(configPath)) {
+    //   console.log(`\n🗑️  清理临时配置文件: ${configPath}`);
+    //   rmSync(configPath, { force: true });
+    // }
   });
 
   describe('Mock 文件结构验证', () => {

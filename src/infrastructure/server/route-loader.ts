@@ -2,10 +2,10 @@ import path from 'path';
 import express from 'express';
 import { pathToFileURL } from 'url';
 import { glob } from 'glob';
-import { fileHelper } from '../utils/file-helper.js';
-import { logger } from '../utils/logger.js';
-import type { ApifoxConfig, MockRoute } from '../types/index.js';
-import type { MockConfig } from '../core/mock-config-loader.js';
+import { fileHelper } from '../../utils/file-helper.js';
+import { logger } from '../logger/console-logger.impl.js';
+import type { ApifoxConfig, MockRoute } from '../../types/index.js';
+import type { MockConfig } from '../../core/mock-config-loader.js';
 
 /**
  * 模块缓存映射

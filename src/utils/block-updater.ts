@@ -1,8 +1,10 @@
 import path from 'path';
 import fs from 'fs/promises';
-import { ensureDir, exists, readFile } from './file-operations.js';
+import { FileSystemImpl } from '../infrastructure/file-system/file-system.impl.js';
 import { formatCode } from './code-formatter.js';
 import { deduplicateImports } from '../generators/templates/file-architecture.js';
+
+const fileSystem = new FileSystemImpl();
 
 /**
  * 增量更新文件内容
@@ -14,10 +16,10 @@ export async function updateFileWithBlock(
   blockIdentifier: string
 ): Promise<void> {
   const dir = path.dirname(filePath);
-  await ensureDir(dir);
+  await fileSystem.ensureDir(dir);
 
   // 如果文件不存在，直接创建并添加 insert-flag
-  if (!(await exists(filePath))) {
+  if (!(await fileSystem.exists(filePath))) {
     const contentWithFlag = content + '\n\n// [insert-flag]\n';
     const formattedContent = await formatCode(contentWithFlag, filePath);
     await fs.writeFile(filePath, formattedContent, 'utf-8');
@@ -25,7 +27,7 @@ export async function updateFileWithBlock(
   }
 
   // 读取现有文件
-  let existingContent = await readFile(filePath);
+  let existingContent = await fileSystem.readFile(filePath);
 
   // 查找插入标记（兼容有无空格）
   const insertFlagPattern = /\/\/ ?\[insert-flag\]/g;

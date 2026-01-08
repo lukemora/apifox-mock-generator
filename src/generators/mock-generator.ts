@@ -1,6 +1,6 @@
 import path from 'path';
 import { fileHelper } from '../utils/file-helper.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../infrastructure/logger/console-logger.impl.js';
 import { groupEndpointsByPath } from '../utils/path-utils.js';
 import { generateMockEndpointContent } from './templates/mock-template.js';
 import {
@@ -65,18 +65,18 @@ export async function generateMockFiles(
  * 确保文件有基础架构（import 语句等）
  */
 async function ensureFileArchitecture(filePath: string): Promise<void> {
-  const { exists, readFile } = await import('../utils/file-operations.js');
+  const { FileSystemImpl } = await import('../infrastructure/file-system/file-system.impl.js');
+  const fileSystem = new FileSystemImpl();
 
-  if (!(await exists(filePath))) {
+  if (!(await fileSystem.exists(filePath))) {
     // 文件不存在，创建基础架构
     const architecture = generateFileArchitecture();
-    const { writeFile } = await import('fs/promises');
-    await writeFile(filePath, architecture, 'utf-8');
+    await fileSystem.writeFile(filePath, architecture);
     return;
   }
 
   // 文件存在，先清理重复的 import 语句
-  let content = await readFile(filePath);
+  let content = await fileSystem.readFile(filePath);
   content = deduplicateImports(content);
 
   // 检查是否有基础架构

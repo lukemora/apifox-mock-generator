@@ -1,5 +1,5 @@
 import type express from 'express';
-import type { OpenAPISchema, OpenAPISchemaReference } from '../types/openapi.js';
+import type { OpenAPISchema, OpenAPISchemaReference } from '../../types/openapi.js';
 
 /**
  * 验证配置类型
@@ -87,39 +87,55 @@ function validateSchema(
 ): string | null {
   if (!schema) return null;
 
+  // 如果是引用，跳过验证（实际应该解析引用）
+  if ('$ref' in schema) {
+    return null;
+  }
+
+  const concreteSchema = schema as OpenAPISchema;
+
   // 对象类型
-  if (schema.type === 'object' && schema.properties) {
-    const required = schema.required || [];
+  if (concreteSchema.type === 'object' && concreteSchema.properties) {
+    const required = concreteSchema.required || [];
 
     // 检查必填字段
     for (const field of required) {
-      if (data[field] === undefined || data[field] === null) {
+      if (
+        typeof data === 'object' &&
+        data !== null &&
+        !Array.isArray(data) &&
+        (data as Record<string, unknown>)[field] === undefined &&
+        (data as Record<string, unknown>)[field] === null
+      ) {
         return `字段 '${path}${field}' 是必填的`;
       }
     }
 
     // 递归校验每个属性
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
-      if (data[key] !== undefined) {
-        const error = validateSchema(data[key], propSchema, `${path}${key}.`);
-        if (error) return error;
+    if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      const dataObj = data as Record<string, unknown>;
+      for (const [key, propSchema] of Object.entries(concreteSchema.properties)) {
+        if (dataObj[key] !== undefined) {
+          const error = validateSchema(dataObj[key], propSchema, `${path}${key}.`);
+          if (error) return error;
+        }
       }
     }
   }
 
   // 数组类型
-  if (schema.type === 'array' && Array.isArray(data)) {
-    if (schema.items) {
+  if (concreteSchema.type === 'array' && Array.isArray(data)) {
+    if (concreteSchema.items) {
       for (let i = 0; i < data.length; i++) {
-        const error = validateSchema(data[i], schema.items, `${path}[${i}].`);
+        const error = validateSchema(data[i], concreteSchema.items, `${path}[${i}].`);
         if (error) return error;
       }
     }
   }
 
   // 基础类型校验
-  if (schema.type && !validateBasicType(data, schema.type)) {
-    return `字段 '${path.slice(0, -1)}' 类型错误，期望 ${schema.type}`;
+  if (concreteSchema.type && !validateBasicType(data, concreteSchema.type)) {
+    return `字段 '${path.slice(0, -1)}' 类型错误，期望 ${concreteSchema.type}`;
   }
 
   return null;

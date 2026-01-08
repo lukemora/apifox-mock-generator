@@ -172,10 +172,21 @@ export interface PropertyDefinition extends TypeDefinition {
   required?: boolean;
 }
 
+// 验证配置
+export interface ValidationConfig {
+  params?: Record<string, { required?: boolean; type: string }>;
+  query?: Record<string, { required?: boolean; type: string }>;
+  body?: {
+    required?: boolean;
+    schema?: import('./openapi.js').OpenAPISchema | import('./openapi.js').OpenAPISchemaReference;
+  };
+}
+
 // Mock 路由
 export interface MockRoute {
   path: string;
   method: string;
   response: unknown;
   status?: number;
+  validation?: ValidationConfig;
 }

@@ -2,18 +2,18 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { existsSync, readFileSync, writeFileSync, rmSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { loadConfig } from '../../src/core/config-loader.js';
-import { fetchOpenAPIFromApifox } from '../../src/core/apifox-client.js';
-import { convertOpenAPIToEndpoints } from '../../src/core/openapi-converter.js';
-import { filterEndpoints, STATUS_MAPPING } from '../../src/core/endpoint-filter.js';
+import { fetchOpenAPIFromApifox, convertOpenAPIToEndpoints, filterEndpoints, STATUS_MAPPING } from './utils/test-api-helpers.js';
 import { generateMockFiles } from '../../src/generators/mock-generator.js';
 import { generateTypeFiles } from '../../src/generators/type-generator.js';
 import { TestHelpers } from './utils/test-helpers.js';
-import { getProjectRoot } from '../../src/utils/file-operations.js';
+import { FileSystemImpl } from '../../src/infrastructure/file-system/file-system.impl.js';
+
+const fileSystem = new FileSystemImpl();
 
 /**
  * 查找项目根目录（向上查找包含 package.json 或 apifox.config.json 的目录）
  */
-function findProjectRoot(startDir: string = process.cwd()): string {
+function findProjectRoot(startDir: string = fileSystem.getProjectRoot()): string {
   let currentDir = resolve(startDir);
   const root = resolve('/');
 

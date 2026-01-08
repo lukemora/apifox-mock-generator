@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../infrastructure/logger/console-logger.impl.js';
 
 const command = process.argv[2];
 

@@ -1,18 +1,18 @@
 import path from 'path';
 import chokidar from 'chokidar';
 import { watch } from 'fs';
-import { logger } from '../utils/logger.js';
+import { logger } from '../logger/console-logger.impl.js';
 import { loadRouteFromFile, clearModuleCache } from './route-loader.js';
-import type { RouteManager } from './route-manager.js';
-import type { ApifoxConfig } from '../types/index.js';
-import type { MockConfig } from '../core/mock-config-loader.js';
+import type { IRouteManager } from '../../domain/interfaces.js';
+import type { ApifoxConfig } from '../../types/index.js';
+import type { MockConfig } from '../../core/mock-config-loader.js';
 
 /**
  * 设置热重载
  */
 export function setupHotReload(
   config: ApifoxConfig,
-  routeManager: RouteManager,
+  routeManager: IRouteManager,
   mockConfig: MockConfig
 ): void {
   const mockDir = path.resolve(config.mockDir);
@@ -55,7 +55,7 @@ export function setupHotReload(
     filePath: string,
     mockDir: string,
     config: ApifoxConfig,
-    routeManager: RouteManager,
+    routeManager: IRouteManager,
     mockConfig: MockConfig
   ) {
     try {
@@ -135,7 +135,7 @@ export function setupHotReload(
       const allRoutes = routeManager.getAllRoutes();
       let removedCount = 0;
 
-      allRoutes.forEach(route => {
+      allRoutes.forEach((route: { method: string; path: string }) => {
         const key = `${route.method} ${route.path}`;
         // 简单判断：如果找不到对应的物理文件，则移除
         routeManager.removeRoute(key);

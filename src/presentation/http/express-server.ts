@@ -1,17 +1,17 @@
 import express from 'express';
 import cors from 'cors';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../infrastructure/logger/console-logger.impl.js';
 import { RouteHandler } from './route-handler.js';
-import { ApifoxError } from '../core/errors.js';
-import { ERROR_TO_HTTP_STATUS } from '../core/error-codes.js';
-import type { RouteManager } from './route-manager.js';
-import type { MockConfig } from '../core/mock-config-loader.js';
+import { ApifoxError } from '../../core/errors.js';
+import { ERROR_TO_HTTP_STATUS } from '../../core/error-codes.js';
+import type { IRouteManager } from '../../domain/interfaces.js';
+import type { MockConfig } from '../../core/mock-config-loader.js';
 
 /**
  * 设置 Mock 服务器
  */
 export function setupMockServer(
-  routeManager: RouteManager,
+  routeManager: IRouteManager,
   mockConfig: MockConfig
 ): express.Application {
   const app = express();

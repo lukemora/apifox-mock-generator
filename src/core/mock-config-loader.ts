@@ -54,7 +54,11 @@ export async function loadMockConfig(): Promise<MockConfig> {
       ? `file://${jsConfigPath}`
       : `file:///${jsConfigPath.replace(/\\/g, '/')}`;
 
-    const configModule = await import(jsConfigUrl);
+    // 在测试环境中，使用缓存破坏来确保加载最新配置
+    const cacheBuster = process.env.VITEST || process.env.NODE_ENV === 'test'
+      ? `?t=${Date.now()}&r=${Math.random()}`
+      : '';
+    const configModule = await import(jsConfigUrl + cacheBuster);
     const config = configModule.default || configModule;
 
     if (typeof config !== 'object' || config === null) {

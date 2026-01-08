@@ -1,6 +1,6 @@
 import path from 'path';
 import { fileHelper } from '../utils/file-helper.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../infrastructure/logger/console-logger.impl.js';
 import { groupEndpointsByPath } from '../utils/path-utils.js';
 import { generateNamespaceContent } from './templates/type-template.js';
 import type { ApifoxConfig, ApiEndpoint } from '../types/index.js';

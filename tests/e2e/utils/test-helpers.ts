@@ -1,8 +1,10 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import type { ApifoxConfig } from '../../../src/types/index.js';
 import type { MockConfig } from '../../../src/core/mock-config-loader.js';
-import { getProjectRoot } from '../../../src/utils/file-operations.js';
+import { FileSystemImpl } from '../../../src/infrastructure/file-system/file-system.impl.js';
+
+const fileSystem = new FileSystemImpl();
 
 /**
  * 测试工具函数
@@ -17,7 +19,7 @@ export class TestHelpers {
   static createTempConfig(
     config: Partial<ApifoxConfig>,
     baseConfig?: ApifoxConfig,
-    baseDir: string = getProjectRoot()
+    baseDir: string = fileSystem.getProjectRoot()
   ): string {
     const configPath = join(baseDir, 'apifox.config.json');
     // 如果有基础配置，使用基础配置；否则使用默认值
@@ -40,7 +42,7 @@ export class TestHelpers {
    */
   static async createTempMockConfig(
     config: Partial<MockConfig>,
-    baseDir: string = getProjectRoot()
+    baseDir: string = fileSystem.getProjectRoot()
   ): Promise<string> {
     const configPath = join(baseDir, 'mock.config.js');
     const defaultConfig: MockConfig = {
@@ -101,6 +103,30 @@ export class TestHelpers {
       if (existsSync(filePath)) {
         rmSync(filePath, { recursive: true, force: true });
       }
+    }
+  }
+
+  /**
+   * 清理 logs 目录下的 OpenAPI 数据文件
+   */
+  static cleanupOpenAPILogFiles(): void {
+    try {
+      const logDir = join(process.cwd(), 'logs');
+      if (!existsSync(logDir)) {
+        return;
+      }
+
+      const files = readdirSync(logDir);
+      for (const file of files) {
+        // 匹配 openapi-*.json 格式的文件
+        if (file.startsWith('openapi-') && file.endsWith('.json')) {
+          const filePath = join(logDir, file);
+          rmSync(filePath, { force: true });
+        }
+      }
+    } catch (error) {
+      // 忽略清理失败的错误
+      console.warn(`清理 OpenAPI 日志文件失败: ${error}`);
     }
   }
 
@@ -230,7 +256,7 @@ export class TestHelpers {
    * 获取项目根目录
    */
   static getProjectRoot(): string {
-    return getProjectRoot();
+    return fileSystem.getProjectRoot();
   }
 
   /**

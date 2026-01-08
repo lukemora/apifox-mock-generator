@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { logger } from './logger.js';
+import { logger } from '../infrastructure/logger/console-logger.impl.js';
 import type { OpenAPIDocument } from '../types/openapi.js';
 
 /**

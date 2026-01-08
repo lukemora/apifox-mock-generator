@@ -20,8 +20,21 @@
     "test:e2e:mock": "vitest run tests/e2e/mock-config.e2e.test.ts tests/e2e/mock-server.e2e.test.ts",
     "prepublishOnly": "npm run build"
   },
-  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
-  "keywords": ["apifox", "mock", "api", "typescript", "mock-server", "openapi", "code-generator"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "apifox",
+    "mock",
+    "api",
+    "typescript",
+    "mock-server",
+    "openapi",
+    "code-generator"
+  ],
   "author": "liujun",
   "license": "MIT",
   "repository": {
@@ -45,6 +58,7 @@
     "eslint-plugin-unicorn": "^61.0.2",
     "eslint-plugin-vue": "^10.5.1",
     "glob": "^11.0.3",
+    "puppeteer": "^24.34.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vitest": "^1.0.0"

@@ -1,23 +1,26 @@
 import type express from 'express';
-import type { MockConfig } from '../core/mock-config-loader.js';
-import type { RouteManager } from './route-manager.js';
-import type { MockRoute } from '../types/index.js';
-import { RemoteProxy } from './remote-proxy.js';
-import { findMatchingRoute, extractPathParams } from './route-matcher.js';
+import type { MockConfig } from '../../core/mock-config-loader.js';
+import type { IRouteManager } from '../../domain/interfaces.js';
+import type { MockRoute as MockRouteInterface } from '../../types/index.js';
+import { MockRoute as MockRouteEntity } from '../../domain/entities/mock-route.entity.js';
+import { RemoteProxy } from '../../infrastructure/server/remote-proxy.js';
+import { RouteMatcherService } from '../../domain/services/route-matcher.service.js';
 import { validateRequest } from './validation.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../infrastructure/logger/console-logger.impl.js';
 
 /**
  * 路由处理器 - 根据工作模式处理请求
  */
 export class RouteHandler {
   private config: MockConfig;
-  private routeManager: RouteManager;
+  private routeManager: IRouteManager;
+  private routeMatcher: RouteMatcherService;
   private remoteProxy: RemoteProxy;
 
-  constructor(config: MockConfig, routeManager: RouteManager) {
+  constructor(config: MockConfig, routeManager: IRouteManager) {
     this.config = config;
     this.routeManager = routeManager;
+    this.routeMatcher = new RouteMatcherService();
     this.remoteProxy = new RemoteProxy(config);
   }
 
@@ -31,8 +34,8 @@ export class RouteHandler {
       // 1) remote 参数：从页面 Referer 中解析 ?remote
       let remoteOverride: { mode?: 'mock' | 'proxy'; target?: string } | undefined;
       if (this.config.remoteTarget) {
-        const referer: string | undefined = req.headers?.referer || req.headers?.referrer;
-        if (referer) {
+        const referer = req.headers?.referer || req.headers?.referrer;
+        if (referer && typeof referer === 'string') {
           try {
             const u = new URL(referer);
             const remoteVal = u.searchParams.get('remote');
@@ -40,9 +43,12 @@ export class RouteHandler {
               const val = remoteVal.trim();
               if (val.toLowerCase() === 'mock') {
                 remoteOverride = { mode: 'mock' };
+              } else if (val.toLowerCase() === 'proxy') {
+                remoteOverride = { mode: 'proxy' };
               } else if (/^https?:\/\//i.test(val)) {
                 remoteOverride = { mode: 'proxy', target: val };
               }
+              // 如果 remote 值不是 mock/proxy/URL，则忽略，使用配置的 model
             }
           } catch {}
         }
@@ -108,15 +114,17 @@ export class RouteHandler {
       if (
         proxyResponse.data &&
         typeof proxyResponse.data === 'object' &&
-        proxyResponse.data.code !== undefined
+        'code' in proxyResponse.data &&
+        typeof proxyResponse.data.code === 'number'
       ) {
-        if (successCodes.includes(proxyResponse.data.code)) {
+        const code = proxyResponse.data.code;
+        if (successCodes.includes(code)) {
           logger.success(
-            `${req.method} ${req.path} -> code:${proxyResponse.data.code} (远程服务器)`
+            `${req.method} ${req.path} -> code:${code} (远程服务器)`
           );
         } else {
           logger.warn(
-            `${req.method} ${req.path} -> code:${proxyResponse.data.code} (远程服务器业务错误)`
+            `${req.method} ${req.path} -> code:${code} (远程服务器业务错误)`
           );
         }
       } else {
@@ -146,10 +154,12 @@ export class RouteHandler {
    */
   private async handleMockRequest(req: express.Request, res: express.Response, normalizedPath: string): Promise<boolean> {
     let matchedPath = req.path;
-    let route = findMatchingRoute(this.routeManager.getAllRoutes(), req.method, req.path);
+    // 转换为实体类型以使用服务
+    const routes = this.routeManager.getAllRoutes().map(r => new MockRouteEntity(r));
+    let route = this.routeMatcher.findMatchingRoute(routes, req.method, req.path);
 
     if (!route && normalizedPath && normalizedPath !== req.path) {
-      route = findMatchingRoute(this.routeManager.getAllRoutes(), req.method, normalizedPath);
+      route = this.routeMatcher.findMatchingRoute(routes, req.method, normalizedPath);
       matchedPath = normalizedPath;
     }
 
@@ -189,14 +199,14 @@ export class RouteHandler {
    * 执行 Mock 路由
    */
   private async executeMockRoute(
-    route: MockRoute,
+    route: MockRouteEntity,
     req: express.Request,
     res: express.Response,
     normalizedPath: string
   ): Promise<boolean> {
     try {
       // 提取路径参数
-      const params = extractPathParams(route.path, normalizedPath);
+      const params = this.routeMatcher.extractPathParams(route.path, normalizedPath);
       req.params = params;
 
       // 参数校验
