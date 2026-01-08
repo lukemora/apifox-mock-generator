@@ -1,16 +1,17 @@
 import path from 'path';
 import { fileHelper } from '../utils/file-helper.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../infrastructure/logger/console-logger.impl.js';
 import { groupEndpointsByPath } from '../utils/path-utils.js';
 import { generateNamespaceContent } from './templates/type-template.js';
 import type { ApifoxConfig, ApiEndpoint } from '../types/index.js';
+import type { OpenAPIDocument } from '../types/openapi.js';
 
 /**
  * 生成 TypeScript 类型文件
  */
 export async function generateTypeFiles(
   config: ApifoxConfig,
-  openapi: any,
+  openapi: OpenAPIDocument,
   endpoints: ApiEndpoint[]
 ): Promise<void> {
   logger.title('生成 TypeScript 类型文件...');

@@ -1,6 +1,6 @@
 import path from 'path';
 import { fileHelper } from '../utils/file-helper.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../infrastructure/logger/console-logger.impl.js';
 import { groupEndpointsByPath } from '../utils/path-utils.js';
 import { generateMockEndpointContent } from './templates/mock-template.js';
 import {
@@ -9,6 +9,7 @@ import {
   deduplicateImports
 } from './templates/file-architecture.js';
 import type { ApifoxConfig, ApiEndpoint } from '../types/index.js';
+import type { OpenAPISchema, OpenAPISchemaReference } from '../types/openapi.js';
 
 /**
  * 生成 Mock 文件（两步模式：先架构，后接口）
@@ -16,11 +17,17 @@ import type { ApifoxConfig, ApiEndpoint } from '../types/index.js';
 export async function generateMockFiles(
   config: ApifoxConfig,
   endpoints: ApiEndpoint[],
-  definitions?: any
+  definitions?: Record<string, OpenAPISchema | OpenAPISchemaReference>
 ): Promise<void> {
   logger.title('生成 Mock 文件...');
 
-  await fileHelper.ensureDir(config.mockDir);
+  // 将相对路径解析为基于项目根目录的绝对路径
+  const projectRoot = fileHelper.getProjectRoot();
+  const mockDir = path.isAbsolute(config.mockDir)
+    ? config.mockDir
+    : path.resolve(projectRoot, config.mockDir);
+
+  await fileHelper.ensureDir(mockDir);
 
   let generatedCount = 0;
 
@@ -28,7 +35,7 @@ export async function generateMockFiles(
   const groupedEndpoints = groupEndpointsByPath(endpoints);
 
   for (const [groupPath, groupEndpoints] of Object.entries(groupedEndpoints)) {
-    const mockFilePath = path.join(config.mockDir, `${groupPath}.js`);
+    const mockFilePath = path.join(mockDir, `${groupPath}.js`);
 
     // 确保文件所在目录存在
     const fileDir = path.dirname(mockFilePath);
@@ -58,18 +65,18 @@ export async function generateMockFiles(
  * 确保文件有基础架构（import 语句等）
  */
 async function ensureFileArchitecture(filePath: string): Promise<void> {
-  const { exists, readFile } = await import('../utils/file-operations.js');
+  const { FileSystemImpl } = await import('../infrastructure/file-system/file-system.impl.js');
+  const fileSystem = new FileSystemImpl();
 
-  if (!(await exists(filePath))) {
+  if (!(await fileSystem.exists(filePath))) {
     // 文件不存在，创建基础架构
     const architecture = generateFileArchitecture();
-    const { writeFile } = await import('fs/promises');
-    await writeFile(filePath, architecture, 'utf-8');
+    await fileSystem.writeFile(filePath, architecture);
     return;
   }
 
   // 文件存在，先清理重复的 import 语句
-  let content = await readFile(filePath);
+  let content = await fileSystem.readFile(filePath);
   content = deduplicateImports(content);
 
   // 检查是否有基础架构

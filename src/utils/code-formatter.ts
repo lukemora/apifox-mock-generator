@@ -1,6 +1,8 @@
 import path from 'path';
 import prettier from 'prettier';
-import { getProjectRoot } from './file-operations.js';
+import { FileSystemImpl } from '../infrastructure/file-system/file-system.impl.js';
+
+const fileSystem = new FileSystemImpl();
 
 /**
  * 格式化代码

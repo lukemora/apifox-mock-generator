@@ -1,6 +1,6 @@
 // 主入口文件 - 导出公共 API
 export * from './types/index.js';
-export * from './utils/logger.js';
+export { logger } from './infrastructure/logger/console-logger.impl.js';
 
 // 版本信息 - 从 package.json 读取
 import { createRequire } from 'module';
