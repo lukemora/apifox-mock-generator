@@ -5,6 +5,21 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.0.1] - 2026-01-12
+
+### 🐛 修复
+
+- **修复 operationId 导致的生成错误文件路径问题** - 解决使用 operationId 生成文件名时可能出现的路径错误
+  - 移除 `pathToFileName` 函数中对 `operationId` 的依赖，改为直接使用 API 路径生成文件名
+  - 简化文件路径生成逻辑：移除开头的斜杠和路径参数占位符，清理连续斜杠
+  - 移除基于 HTTP 方法的后缀添加逻辑（如 /list, /create 等），统一使用路径作为文件名
+  - 简化 `groupEndpointsByPath` 函数，直接使用路径作为分组键，不再需要提取资源路径
+  - 修复 `wrapMockTemplate` 函数，添加 `fieldType` 参数以正确处理字符串类型的引号包裹
+  - 清理测试文件中的版本号前缀，统一测试描述格式
+
+**修复前**：使用 operationId 可能导致文件名包含特殊字符或格式不一致  
+**修复后**：直接使用 API 路径，确保文件路径生成的一致性和可靠性
+
 ## [2.0.0] - 2026-01-08
 
 ### 🎯 重大更新
