@@ -504,7 +504,7 @@ function generateMockValueForField(
   // 使用 Apifox 的 mock 规则
   const apifoxMockValue = extractApifoxMockRule(schema);
   if (apifoxMockValue) {
-    return wrapMockTemplate(apifoxMockValue);
+    return wrapMockTemplate(apifoxMockValue, schema.type);
   }
 
   // 如果没有 Apifox 规则，使用基本的默认值
@@ -669,14 +669,21 @@ function convertApifoxTemplateToMockJs(template: string): string {
 /**
  * 包装 Mock.js 模板，确保正确的引号格式
  * Mock.js 占位符（@xxx）需要用单引号包裹
+ * @param template Mock 模板字符串
+ * @param fieldType 字段类型，用于判断纯字符串值是否需要加引号
  */
-function wrapMockTemplate(template: string): string {
+function wrapMockTemplate(template: string, fieldType?: string): string {
   // 如果已经是用引号包裹的字符串，直接返回（使用单引号）
   if (template.startsWith('"') && template.endsWith('"')) {
     return "'" + template.slice(1, -1) + "'";
   }
   if (template.startsWith("'") && template.endsWith("'")) {
     return template;
+  }
+
+  // 如果是字符串类型，没有引号则加上单引号
+  if (fieldType === 'string') {
+    return `'${template}'`;
   }
 
   // 如果是 Mock.js 占位符（以@开头）或正则表达式（以/开头），用单引号包裹

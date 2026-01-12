@@ -18,7 +18,6 @@ export class FetchApifoxDataUseCase {
    * @returns OpenAPI 文档
    */
   async execute(config: ApifoxConfig): Promise<OpenAPIDocument> {
-    this.logger.info('从 Apifox 拉取 API 数据...');
 
     try {
       const openapi = await this.apifoxClient.fetchOpenAPI(config);

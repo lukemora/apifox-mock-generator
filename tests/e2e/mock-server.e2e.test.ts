@@ -218,9 +218,9 @@ describe.sequential('Mock 服务器功能验证', () => {
     return { mockReq, mockRes };
   }
 
-  // ==================== 3.11.1 model 配置测试 ====================
+  // ==================== model 配置测试 ====================
 
-  describe('3.11.1 model 配置测试', () => {
+  describe('model 配置测试', () => {
     describe('model="mock" 基础功能验证', () => {
       it('应该使用 Mock 模式处理请求并返回 mock 数据', async () => {
         // 使用真实的 mock 文件，而不是手动创建路由
@@ -313,9 +313,9 @@ describe.sequential('Mock 服务器功能验证', () => {
     });
   });
 
-  // ==================== 3.11.2 port 配置测试 ====================
+  // ==================== port 配置测试 ====================
 
-  describe('3.11.2 port 配置测试', () => {
+  describe('port 配置测试', () => {
 
     it('应该使用默认端口 10000', async () => {
       const { server: srv, mockConfig } = await startServer({});
@@ -362,9 +362,9 @@ describe.sequential('Mock 服务器功能验证', () => {
     });
   });
 
-  // ==================== 3.11.3 target 配置测试 ====================
+  // ==================== target 配置测试 ====================
 
-  describe('3.11.3 target 配置测试', () => {
+  describe('target 配置测试', () => {
     it('应该正确转发请求到 HTTP 目标服务器', async () => {
       const { server: srv, mockConfig, routeManager } = await startServer({
         model: 'proxy',
@@ -410,9 +410,9 @@ describe.sequential('Mock 服务器功能验证', () => {
     });
   });
 
-  // ==================== 3.11.4 remoteTarget 配置测试 ====================
+  // ==================== remoteTarget 配置测试 ====================
 
-  describe('3.11.4 remoteTarget 配置测试', () => {
+  describe('remoteTarget 配置测试', () => {
     it('remoteTarget=true 时应该从 Referer 头解析 remote=mock 参数', async () => {
       // 使用真实的 mock 文件
       const {
@@ -594,9 +594,9 @@ describe.sequential('Mock 服务器功能验证', () => {
     });
   });
 
-  // ==================== 3.11.5 pathPrefixes 配置测试 ====================
+  // ==================== pathPrefixes 配置测试 ====================
 
-  describe('3.11.5 pathPrefixes 配置测试', () => {
+  describe('pathPrefixes 配置测试', () => {
     it('应该正确匹配路径前缀并标准化路径', async () => {
       // 使用真实的 mock 文件测试 pathPrefixes 功能
       const {
@@ -684,9 +684,9 @@ describe.sequential('Mock 服务器功能验证', () => {
     });
   });
 
-  // ==================== 3.11.6 mockRoutes 配置测试 ====================
+  // ==================== mockRoutes 配置测试 ====================
 
-  describe('3.11.6 mockRoutes 配置测试', () => {
+  describe('mockRoutes 配置测试', () => {
     it('应该支持路径字符串匹配强制 Mock', async () => {
       const {
         server: srv,
@@ -752,9 +752,9 @@ describe.sequential('Mock 服务器功能验证', () => {
     });
   });
 
-  // ==================== 3.11.7 proxyRoutes 配置测试 ====================
+  // ==================== proxyRoutes 配置测试 ====================
 
-  describe('3.11.7 proxyRoutes 配置测试', () => {
+  describe('proxyRoutes 配置测试', () => {
     it('应该支持路径字符串匹配强制代理', async () => {
       // 使用真实的 mock 文件测试 proxyRoutes 功能
       const { server: srv, mockConfig, routeManager } = await startServer(
@@ -815,9 +815,9 @@ describe.sequential('Mock 服务器功能验证', () => {
     });
   });
 
-  // ==================== 3.11.8 Mock 文件使用测试 ====================
+  // ==================== Mock 文件使用测试 ====================
 
-  describe('3.11.8 Mock 文件使用测试（mock 模式下）', () => {
+  describe('Mock 文件使用测试（mock 模式下）', () => {
     it('应该正确加载 mock 文件中的路由', async () => {
       if (!existsSync(mockDir)) {
         return;
@@ -984,9 +984,9 @@ describe.sequential('Mock 服务器功能验证', () => {
     });
   });
 
-  // ==================== 3.11.10 组合配置测试 ====================
+  // ==================== 组合配置测试 ====================
 
-  describe('3.11.10 组合配置测试', () => {
+  describe('组合配置测试', () => {
     it('model="proxy" + mockRoutes 组合', async () => {
       // 使用真实的 mock 文件测试组合配置
       const { server: srv, mockConfig, routeManager } = await startServer(

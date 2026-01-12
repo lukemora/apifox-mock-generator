@@ -1,71 +1,42 @@
 import type { ApiEndpoint } from '../types/index.js';
 
 /**
- * 将路径和方法转换为文件名
- * 例如: GET /users -> users/list.js
- *       POST /users -> users/create.js
- *       GET /users/{id} -> users/detail.js
+ * 将路径转换为文件名
+ * 直接使用 API 路径作为文件名，移除开头的斜杠和路径参数占位符
+ * 路径参数（如 {id}）会被移除，因为它们是动态的，不应出现在文件名中
+ * 例如: /v1/report-evaluation/detail -> v1/report-evaluation/detail
+ *       /users/{id} -> users
+ *       /users/{id}/posts/{postId} -> users/posts
  */
 export function pathToFileName(apiPath: string, method: string, operationId?: string): string {
-  // 如果有 operationId，优先使用
-  if (operationId) {
-    // getUserList -> users/list
-    // createUser -> users/create
-    const match = operationId.match(/^(get|post|put|delete|patch)?(.+)$/i);
-    if (match) {
-      const resource = match[2];
+  // 直接使用路径，移除开头的斜杠
+  let cleanPath = apiPath.replace(/^\//, '');
 
-      // 将驼峰转换为路径
-      const fileName = resource
-        .replace(/([A-Z])/g, '-$1')
-        .toLowerCase()
-        .replace(/^-/, '');
+  // 移除路径参数占位符（如 {id}, {userId} 等）
+  // 这些是动态参数，不应出现在文件名中
+  cleanPath = cleanPath.replace(/\{[^}]+\}/g, '');
 
-      return fileName;
-    }
-  }
+  // 清理可能出现的连续斜杠（移除参数后可能产生 //）
+  cleanPath = cleanPath.replace(/\/+/g, '/');
 
-  // 移除开头的斜杠和参数占位符
-  let cleanPath = apiPath.replace(/^\//, '').replace(/\{[^}]+\}/g, 'detail');
+  // 移除末尾的斜杠
+  cleanPath = cleanPath.replace(/\/$/, '');
 
-  // 替换斜杠为路径分隔符
-  cleanPath = cleanPath.replace(/\//g, '/');
+  // 确保路径分隔符使用正斜杠（跨平台兼容）
+  cleanPath = cleanPath.replace(/\\/g, '/');
 
-  // 根据方法名添加后缀
-  const methodSuffix: Record<string, string> = {
-    'GET': cleanPath.endsWith('detail') ? '' : '/list',
-    'POST': '/create',
-    'PUT': '/update',
-    'DELETE': '/delete',
-    'PATCH': '/patch'
-  };
-
-  const suffix = methodSuffix[method.toUpperCase()] || '';
-  return cleanPath + suffix;
+  return cleanPath;
 }
 
 /**
- * 按路径分组接口，相同资源的接口放在同一个文件中
+ * 按路径分组接口，相同路径的接口放在同一个文件中
  */
 export function groupEndpointsByPath(endpoints: ApiEndpoint[]): Record<string, ApiEndpoint[]> {
   const groups: Record<string, ApiEndpoint[]> = {};
 
   for (const endpoint of endpoints) {
-    const fileName = pathToFileName(endpoint.path, endpoint.method, (endpoint as unknown as { operationId?: string }).operationId);
-
-    // 提取资源路径（去除方法后缀）
-    let resourcePath = fileName
-      .replace(/\/list$/, '')
-      .replace(/\/create$/, '')
-      .replace(/\/update$/, '')
-      .replace(/\/delete$/, '')
-      .replace(/\/detail$/, '')
-      .replace(/\/patch$/, '');
-
-    // 如果路径为空，使用文件名本身
-    if (!resourcePath || resourcePath === fileName) {
-      resourcePath = fileName;
-    }
+    // 直接使用路径作为分组键，不添加方法后缀
+    const resourcePath = pathToFileName(endpoint.path, endpoint.method, (endpoint as unknown as { operationId?: string }).operationId);
 
     if (!groups[resourcePath]) {
       groups[resourcePath] = [];
