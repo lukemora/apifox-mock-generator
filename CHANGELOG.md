@@ -5,6 +5,20 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.0.2] - 2026-01-13
+
+### 🐛 修复
+
+- **修复类型生成中的重复接口问题** - 解决类型展开后未从 complexTypes 移除导致生成未使用接口的问题
+  - 在生成响应类型（Res）时，当接口被展开到 Res 中后，从 complexTypes 中移除该类型引用
+  - 在生成请求类型（ReqData）时，当接口被展开到 ReqData 中后，从 complexTypes 中移除该类型引用
+  - 避免生成冗余的未使用接口定义，提升代码生成质量
+
+- **添加 null 类型映射支持** - 修复 null 类型在 TypeScript 类型映射中缺失的问题
+  - 在 `type-mapping.ts` 中添加对 `null` 类型的处理
+  - 确保 OpenAPI schema 中的 `null` 类型能正确映射为 TypeScript 的 `null` 类型
+  - 提升类型生成的完整性和准确性
+
 ## [2.0.1] - 2026-01-12
 
 ### 🐛 修复
