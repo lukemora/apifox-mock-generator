@@ -153,6 +153,8 @@ function generateResponseTypes(
       // 提取接口体内容，去掉 export interface 部分
       const interfaceBody = referencedInterface.replace(/export interface \w+ /, '');
       content += `\n  export interface Res ${interfaceBody}`;
+      // 从 complexTypes 中移除，因为已经展开到 Res 中了，避免生成未使用的接口
+      context.complexTypes.delete(responseType);
     } else {
       // 如果没有找到引用的接口，使用继承作为后备
       content += `\n  export interface Res extends ${responseType} {}`;
@@ -196,6 +198,8 @@ function generateRequestTypes(
         // 提取接口体内容，去掉 export interface 部分
         const interfaceBody = referencedInterface.replace(/export interface \w+ /, '');
         content += `\n  export interface ReqData ${interfaceBody}`;
+        // 从 complexTypes 中移除，因为已经展开到 ReqData 中了，避免生成未使用的接口
+        context.complexTypes.delete(requestType);
       } else {
         // 如果没有找到引用的接口，使用继承作为后备
         content += `\n  export interface ReqData extends ${requestType} {}`;

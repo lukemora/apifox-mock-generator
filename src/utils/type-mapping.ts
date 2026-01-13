@@ -142,6 +142,8 @@ export function getTypeScriptType(
       }
       return 'Record<string, unknown>';
 
+    case 'null':
+        return 'null';
     default:
       return 'any';
   }
