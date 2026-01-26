@@ -73,14 +73,37 @@ export class OpenAPIConverterService {
                 schema: schema
               };
             }),
-            requestBody:
-              op.requestBody && !('$ref' in op.requestBody)
-                ? op.requestBody.content?.['application/json']?.schema
-                : undefined,
-            responseBody:
-              op.responses?.['200'] && !('$ref' in op.responses['200'])
-                ? op.responses['200'].content?.['application/json']?.schema
-                : undefined
+            requestBody: (() => {
+              if (!op.requestBody || '$ref' in op.requestBody) {
+                return undefined;
+              }
+              // 优先使用 application/json，如果没有则尝试其他类型
+              const content = op.requestBody.content;
+              if (!content) {
+                return undefined;
+              }
+              return (
+                content['application/json']?.schema ||
+                content['multipart/form-data']?.schema ||
+                content['application/x-www-form-urlencoded']?.schema ||
+                Object.values(content)[0]?.schema
+              );
+            })(),
+            responseBody: (() => {
+              const response200 = op.responses?.['200'];
+              if (!response200 || '$ref' in response200) {
+                return undefined;
+              }
+              const content = response200.content;
+              if (!content) {
+                return undefined;
+              }
+              // 优先使用 application/json，如果没有则尝试其他类型
+              return (
+                content['application/json']?.schema ||
+                Object.values(content)[0]?.schema
+              );
+            })()
           };
 
           endpoints.push(new ApiEndpoint(endpointData));

@@ -417,12 +417,46 @@ function generateInterfaceBody(
     const required = objectSchema.required || [];
 
     for (const [propName, propSchema] of Object.entries(objectSchema.properties)) {
-      if (isSchemaReference(propSchema)) {
-        continue; // 跳过引用，应该已经处理过了
-      }
-      const prop = propSchema as OpenAPISchema;
       const isRequired = required.includes(propName);
       const optional = isRequired ? '' : '?';
+      
+      // 处理引用类型的属性
+      if (isSchemaReference(propSchema)) {
+        const refName = propSchema.$ref.split('/').pop();
+        const decodedRefName = decodeURIComponent(refName || '');
+        const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
+        
+        // 生成类型名称
+        const interfaceName = `${typePrefix}${propName.charAt(0).toUpperCase() + propName.slice(1).replace(/_([a-z])/g, (_: unknown, c: string) => c.toUpperCase())}`;
+        
+        // 生成嵌套接口定义
+        if (definitions?.[decodedRefName] && !context.generatedTypes.has(interfaceName)) {
+          const nestedInterface = generateNestedInterface(
+            definitions[decodedRefName],
+            definitions,
+            context,
+            interfaceName,
+            schemaNameMap,
+            0,
+            new Set(),
+            decodedRefName
+          );
+          context.complexTypes.set(interfaceName, nestedInterface);
+          context.generatedTypes.add(interfaceName);
+        }
+        
+        // 生成注释
+        let comment = '';
+        const fieldDesc = (definitions?.[decodedRefName] as OpenAPISchema)?.description || '';
+        if (fieldDesc) {
+          comment = `\n    /** ${fieldDesc} */`;
+        }
+        
+        result += `${comment}\n    ${propName}${optional}: ${interfaceName};`;
+        continue;
+      }
+      
+      const prop = propSchema as OpenAPISchema;
 
       // 生成注释
       let comment = '';
@@ -792,74 +826,122 @@ function generateStandardResponseBody(
 
   // 处理标准响应体的字段：code, msg, data
   for (const [propName, propSchema] of Object.entries(schema.properties)) {
-    if (isSchemaReference(propSchema)) {
-      continue; // 跳过引用，应该已经处理过了
-    }
-    const prop = propSchema as OpenAPISchema;
     const isRequired = required.includes(propName);
     const optional = isRequired ? '' : '?';
 
-    // 生成注释
-    let comment = '';
-    const fieldDesc = prop.title || prop.description || '';
-    if (fieldDesc) {
-      comment = `\n    /** ${fieldDesc} */`;
-    }
-
     // 生成类型
     let tsType: string;
+    let comment = '';
 
     if (propName === 'data') {
       // 特殊处理data字段：强制生成ResData接口
       const resDataInterfaceName = 'ResData';
 
-      // 检查data字段是否为null类型
-      if (prop.type === 'null') {
-        // 只有当type明确为null时，ResData才应该是null类型
+      // 处理引用类型的 data 字段
+      if (isSchemaReference(propSchema)) {
+        const refName = propSchema.$ref.split('/').pop();
+        const dataSchemaName = decodeURIComponent(refName || '');
+        
+        // 生成 ResData 接口
         if (!context.generatedTypes.has(resDataInterfaceName)) {
-          context.complexTypes.set(
-            resDataInterfaceName,
-            `export type ${resDataInterfaceName} = null;`
-          );
-          context.generatedTypes.add(resDataInterfaceName);
-        }
-        tsType = resDataInterfaceName;
-      } else {
-        // 如果data不是null，生成正常的ResData接口
-        if (!context.generatedTypes.has(resDataInterfaceName)) {
-          // 提取 data 字段的 schema 名称
-          let dataSchemaName: string | undefined;
-          if (isSchemaReference(prop)) {
-            const refName = prop.$ref.split('/').pop();
-            dataSchemaName = decodeURIComponent(refName || '');
-          } else if (prop.properties) {
-            // 对于直接定义的对象，尝试从 definitions 中查找
-            for (const [name, def] of Object.entries(schemas || {})) {
-              if (def === prop) {
-                dataSchemaName = name;
-                break;
-              }
-            }
-          }
-
           const nestedInterface = generateNestedInterface(
-            prop,
+            schemas?.[dataSchemaName],
             schemas,
             context,
             resDataInterfaceName,
             schemaNameMap,
             0,
             new Set(),
-            dataSchemaName // 传递 data 字段的 schema 名称
+            dataSchemaName
           );
           context.complexTypes.set(resDataInterfaceName, nestedInterface);
           context.generatedTypes.add(resDataInterfaceName);
         }
         tsType = resDataInterfaceName;
+        
+        // 生成注释
+        const dataSchema = schemas?.[dataSchemaName] as OpenAPISchema | undefined;
+        const fieldDesc = dataSchema?.description || '';
+        if (fieldDesc) {
+          comment = `\n    /** ${fieldDesc} */`;
+        }
+      } else {
+        const prop = propSchema as OpenAPISchema;
+        
+        // 检查data字段是否为null类型
+        if (prop.type === 'null') {
+          // 只有当type明确为null时，ResData才应该是null类型
+          if (!context.generatedTypes.has(resDataInterfaceName)) {
+            context.complexTypes.set(
+              resDataInterfaceName,
+              `export type ${resDataInterfaceName} = null;`
+            );
+            context.generatedTypes.add(resDataInterfaceName);
+          }
+          tsType = resDataInterfaceName;
+        } else {
+          // 如果data不是null，生成正常的ResData接口
+          if (!context.generatedTypes.has(resDataInterfaceName)) {
+            // 提取 data 字段的 schema 名称
+            let dataSchemaName: string | undefined;
+            if (prop.properties) {
+              // 对于直接定义的对象，尝试从 definitions 中查找
+              for (const [name, def] of Object.entries(schemas || {})) {
+                if (def === prop) {
+                  dataSchemaName = name;
+                  break;
+                }
+              }
+            }
+
+            const nestedInterface = generateNestedInterface(
+              prop,
+              schemas,
+              context,
+              resDataInterfaceName,
+              schemaNameMap,
+              0,
+              new Set(),
+              dataSchemaName // 传递 data 字段的 schema 名称
+            );
+            context.complexTypes.set(resDataInterfaceName, nestedInterface);
+            context.generatedTypes.add(resDataInterfaceName);
+          }
+          tsType = resDataInterfaceName;
+        }
+        
+        // 生成注释
+        const fieldDesc = prop.title || prop.description || '';
+        if (fieldDesc) {
+          comment = `\n    /** ${fieldDesc} */`;
+        }
       }
     } else {
-      // 其他字段使用标准类型映射
-      tsType = getTypeScriptType(prop, schemaNameMap, context, schemas, '');
+      // 处理其他字段（code, msg等）
+      if (isSchemaReference(propSchema)) {
+        // 对于引用类型的其他字段，使用类型映射
+        const refName = propSchema.$ref.split('/').pop();
+        const decodedRefName = decodeURIComponent(refName || '');
+        const actualRefName = schemaNameMap?.get(decodedRefName) || decodedRefName;
+        tsType = actualRefName;
+        
+        // 生成注释
+        const refSchema = schemas?.[decodedRefName] as OpenAPISchema | undefined;
+        const fieldDesc = refSchema?.description || '';
+        if (fieldDesc) {
+          comment = `\n    /** ${fieldDesc} */`;
+        }
+      } else {
+        const prop = propSchema as OpenAPISchema;
+        // 其他字段使用标准类型映射
+        tsType = getTypeScriptType(prop, schemaNameMap, context, schemas, '');
+        
+        // 生成注释
+        const fieldDesc = prop.title || prop.description || '';
+        if (fieldDesc) {
+          comment = `\n    /** ${fieldDesc} */`;
+        }
+      }
     }
 
     result += `${comment}\n    ${propName}${optional}: ${tsType};`;

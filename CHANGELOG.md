@@ -5,6 +5,16 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.1.0] - 2026-01-26
+
+### 🐛 修复
+
+- **修复 OpenAPI 转换器对 multipart/form-data 请求体的支持** - 解决 OpenAPI 转换器只处理 `application/json` 类型请求体的问题
+  - 扩展请求体处理逻辑，支持 `multipart/form-data`、`application/x-www-form-urlencoded` 等多种 content-type
+  - 优先使用 `application/json`，如果没有则尝试其他类型
+  - 确保所有类型的请求体都能被正确提取和转换
+  - 提升类型生成的完整性和准确性
+
 ## [2.0.2] - 2026-01-13
 
 ### 🐛 修复
